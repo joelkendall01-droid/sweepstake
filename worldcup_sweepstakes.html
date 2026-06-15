@@ -241,6 +241,70 @@ const ROUNDS = [
   { key: 'final', label: 'Final',             start: '2026-07-19', end: '2026-07-19', depth: 5 },
 ];
 
+// ── FIFA World Ranking (approx, mid-2025) ──────────────────────────────
+const FIFA_RANK = {};
+const setRank = (rank, names) => names.forEach(n => FIFA_RANK[n.toLowerCase()] = rank);
+
+setRank(1,  ['spain']);
+setRank(2,  ['argentina']);
+setRank(3,  ['france']);
+setRank(4,  ['england']);
+setRank(5,  ['brazil']);
+setRank(6,  ['portugal']);
+setRank(7,  ['netherlands']);
+setRank(8,  ['belgium']);
+setRank(9,  ['germany']);
+setRank(10, ['croatia']);
+setRank(11, ['morocco']);
+setRank(13, ['colombia']);
+setRank(14, ['uruguay']);
+setRank(15, ['united states','usa','us']);
+setRank(16, ['japan']);
+setRank(17, ['mexico']);
+setRank(18, ['switzerland']);
+setRank(19, ['senegal']);
+setRank(20, ['iran','ir iran','islamic republic of iran']);
+setRank(21, ['south korea','korea republic','korea']);
+setRank(23, ['austria']);
+setRank(24, ['australia']);
+setRank(25, ['ecuador']);
+setRank(27, ['canada']);
+setRank(28, ['egypt']);
+setRank(30, ['panama']);
+setRank(31, ['tunisia']);
+setRank(32, ['algeria']);
+setRank(33, ['sweden']);
+setRank(34, ['norway']);
+setRank(37, ['turkey','türkiye','turkiye']);
+setRank(38, ['paraguay']);
+setRank(39, ['scotland']);
+setRank(40, ['qatar']);
+setRank(41, ['ghana']);
+setRank(42, ["cote d'ivoire","côte d'ivoire","ivory coast","cote d ivoire"]);
+setRank(45, ['saudi arabia']);
+setRank(46, ['south africa']);
+setRank(47, ['cabo verde','cape verde']);
+setRank(48, ['jordan']);
+setRank(49, ['iraq']);
+setRank(51, ['uzbekistan']);
+setRank(52, ['czechia','czech republic']);
+setRank(54, ['new zealand']);
+setRank(55, ['dr congo','democratic republic of congo','congo dr','congo, dr','drc']);
+setRank(56, ['curacao','curaçao']);
+setRank(57, ['bosnia & herzegovina','bosnia and herzegovina','bosnia-herzegovina','bosnia']);
+setRank(58, ['haiti']);
+
+function withRank(name) {
+  const key = name.toLowerCase().trim();
+  let rank = FIFA_RANK[key];
+  if (rank === undefined) {
+    for (const [k, v] of Object.entries(FIFA_RANK)) {
+      if (key.includes(k) || k.includes(key)) { rank = v; break; }
+    }
+  }
+  return rank !== undefined ? name + ' (#' + rank + ')' : name;
+}
+
 // ── Name matching ────────────────────────────────────────────────────
 function findOwner(displayName) {
   const key = displayName.toLowerCase().trim();
@@ -438,7 +502,7 @@ function renderLiveScores(data) {
       const owner = findOwner(name);
       const flag = c.team.logos?.[0]?.href || '';
       return (flag ? '<img class="team-flag" src="' + flag + '" alt="" onerror="this.style.display=\'none\'">' : '') +
-        '<span>' + name + '</span>' + ownerBadge(owner);
+        '<span>' + withRank(name) + '</span>' + ownerBadge(owner);
     };
 
     return '<div class="match-card">' +
@@ -461,7 +525,7 @@ function renderKnockoutTracker(matchesByRound) {
   }
 
   const teamLabel = (c) => {
-    if (c.isReal) return ownerBadge(c.owner) + ' <strong>' + c.name + '</strong>';
+    if (c.isReal) return ownerBadge(c.owner) + ' <strong>' + withRank(c.name) + '</strong>';
     return '<span class="tbd">' + c.name + '</span>';
   };
 
@@ -500,7 +564,7 @@ function renderTeams(ranked, teams) {
           list.map(t =>
             '<div class="team-row">' +
               (t.flag ? '<img class="team-flag" src="' + t.flag + '" alt="" onerror="this.style.display=\'none\'">' : '') +
-              '<span class="team-name">' + t.name + '</span>' +
+              '<span class="team-name">' + withRank(t.name) + '</span>' +
               '<span class="team-record">' + t.rec + '</span>' +
               '<span class="team-pts ' + cfg.c + '">' + t.pts + '</span>' +
             '</div>'
