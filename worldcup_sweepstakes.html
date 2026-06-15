@@ -126,6 +126,24 @@
       will-change: transform; filter: drop-shadow(0 7px 6px rgba(0,0,0,.38));
     }
     .football-toy.grabbing { cursor: grabbing; }
+
+    /* Tabs */
+    .tabs { display: flex; gap: 8px; max-width: 900px; margin: 0 auto 16px; padding: 0 16px; }
+    .tab { flex: 1; text-align: center; padding: 10px 12px; border-radius: 10px; font-weight: 800; font-size: 13px; background: white; color: #888; cursor: pointer; box-shadow: 0 2px 8px rgba(0,0,0,.06); user-select: none; transition: background .15s, color .15s; }
+    .tab.active { background: linear-gradient(135deg, #667eea, #764ba2); color: white; }
+    .tab-content { display: none; }
+    .tab-content.active { display: block; }
+
+    /* Keepy Uppy game */
+    .game-wrap { max-width: 480px; margin: 0 auto; text-align: center; padding: 0 16px 24px; }
+    .game-stats { display: flex; justify-content: center; gap: 32px; margin-bottom: 12px; }
+    .game-stats .stat-label { display: block; font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: 1px; color: #aaa; }
+    .game-stats .stat-value { font-size: 26px; font-weight: 800; color: #333; }
+    .game-field { position: relative; height: 60vh; max-height: 520px; min-height: 320px; border-radius: 16px; overflow: hidden; background: repeating-linear-gradient(180deg, #5fb86b 0, #5fb86b 40px, #54aa60 40px, #54aa60 80px); box-shadow: 0 4px 16px rgba(0,0,0,.15); touch-action: none; }
+    .game-ball { position: absolute; width: 50px; height: 50px; font-size: 40px; line-height: 50px; text-align: center; user-select: none; will-change: transform; }
+    .game-overlay { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; background: rgba(0,0,0,.5); color: white; font-weight: 800; text-align: center; padding: 20px; }
+    .game-overlay button { padding: 10px 24px; border-radius: 10px; border: none; background: white; color: #333; font-weight: 800; font-size: 14px; cursor: pointer; }
+    .game-hint { margin-top: 10px; font-size: 12px; color: #aaa; }
   </style>
 </head>
 <body>
@@ -139,8 +157,26 @@
   </div>
 </div>
 
-<div class="container">
+<div class="tabs">
+  <div class="tab active" id="tabStandings" onclick="switchTab('standings')">📊 Standings</div>
+  <div class="tab" id="tabGame" onclick="switchTab('game')">⚽ Keepy Uppy</div>
+</div>
+
+<div class="container tab-content active" id="standingsTab">
   <div id="app"><div class="loading">⚽ Fetching live standings…</div></div>
+</div>
+
+<div class="tab-content" id="gameTab">
+  <div class="game-wrap">
+    <div class="game-stats">
+      <div><span class="stat-label">Score</span><span class="stat-value" id="kuScore">0</span></div>
+      <div><span class="stat-label">Best</span><span class="stat-value" id="kuBest">0</span></div>
+    </div>
+    <div class="game-field" id="gameField">
+      <div class="game-ball" id="kuBall">⚽</div>
+    </div>
+    <div class="game-hint">Tap the ball before it hits the ground!</div>
+  </div>
 </div>
 
 <div class="football-toy" id="footballToy" title="Throw me!" aria-hidden="true">⚽</div>
@@ -648,6 +684,127 @@ function initFootballToy() {
 }
 
 initFootballToy();
+
+// ── Tabs ─────────────────────────────────────────────────────────────
+function switchTab(name) {
+  document.getElementById('tabStandings').classList.toggle('active', name === 'standings');
+  document.getElementById('tabGame').classList.toggle('active', name === 'game');
+  document.getElementById('standingsTab').classList.toggle('active', name === 'standings');
+  document.getElementById('gameTab').classList.toggle('active', name === 'game');
+  if (name === 'game') initKeepyUppy();
+}
+
+// ── Keepy Uppy game ──────────────────────────────────────────────────
+let kuStarted = false;
+function initKeepyUppy() {
+  if (kuStarted) return;
+  kuStarted = true;
+
+  const field = document.getElementById('gameField');
+  const ball = document.getElementById('kuBall');
+  const scoreEl = document.getElementById('kuScore');
+  const bestEl = document.getElementById('kuBest');
+
+  const SIZE = 50;
+  const GRAVITY = 1500;
+  const HIT_VEL = 800;
+  const WALL_BOUNCE = 0.8;
+
+  let score = 0;
+  let best = parseInt(localStorage.getItem('kuBest') || '0', 10);
+  bestEl.textContent = best;
+
+  let fw = field.clientWidth, fh = field.clientHeight;
+  let pos = { x: fw / 2 - SIZE / 2, y: 20 };
+  let vel = { x: 0, y: 0 };
+  let rotation = 0;
+  let gameOver = false;
+  let overlay = null;
+
+  function applyTransform() {
+    ball.style.transform = 'translate(' + pos.x + 'px,' + pos.y + 'px) rotate(' + rotation + 'deg)';
+  }
+
+  function showOverlay() {
+    overlay = document.createElement('div');
+    overlay.className = 'game-overlay';
+    overlay.innerHTML = '<div style="font-size:28px">😬 Game Over</div>' +
+      '<div>Score: ' + score + '</div>' +
+      (score > 0 && score >= best ? '<div>🎉 New Best!</div>' : '') +
+      '<button>Play Again</button>';
+    overlay.querySelector('button').addEventListener('pointerdown', (e) => {
+      e.stopPropagation();
+      reset();
+    });
+    field.appendChild(overlay);
+  }
+
+  function reset() {
+    if (overlay) { overlay.remove(); overlay = null; }
+    score = 0;
+    scoreEl.textContent = '0';
+    fw = field.clientWidth; fh = field.clientHeight;
+    pos = { x: fw / 2 - SIZE / 2, y: 20 };
+    vel = { x: 0, y: 0 };
+    rotation = 0;
+    gameOver = false;
+    lastTime = performance.now();
+  }
+
+  let lastTime = performance.now();
+  function tick(now) {
+    let dt = (now - lastTime) / 1000;
+    lastTime = now;
+    if (dt > 0.032) dt = 0.032;
+
+    if (!gameOver) {
+      vel.y += GRAVITY * dt;
+      pos.x += vel.x * dt;
+      pos.y += vel.y * dt;
+      rotation += vel.x * dt * 0.5;
+
+      if (pos.x < 0) { pos.x = 0; vel.x = -vel.x * WALL_BOUNCE; }
+      if (pos.x > fw - SIZE) { pos.x = fw - SIZE; vel.x = -vel.x * WALL_BOUNCE; }
+      if (pos.y < 0) { pos.y = 0; vel.y = -vel.y * 0.5; }
+
+      if (pos.y + SIZE >= fh) {
+        pos.y = fh - SIZE;
+        gameOver = true;
+        if (score > best) {
+          best = score;
+          localStorage.setItem('kuBest', best);
+          bestEl.textContent = best;
+        }
+        showOverlay();
+      }
+    }
+    applyTransform();
+    requestAnimationFrame(tick);
+  }
+  requestAnimationFrame(tick);
+
+  field.addEventListener('pointerdown', (e) => {
+    if (gameOver) return;
+    const rect = field.getBoundingClientRect();
+    const tapX = e.clientX - rect.left;
+    const tapY = e.clientY - rect.top;
+    const ballCx = pos.x + SIZE / 2;
+    const ballCy = pos.y + SIZE / 2;
+    const dx = tapX - ballCx, dy = tapY - ballCy;
+    const dist = Math.sqrt(dx * dx + dy * dy);
+    if (dist <= SIZE * 1.1) {
+      score++;
+      scoreEl.textContent = score;
+      vel.y = -HIT_VEL;
+      vel.x += dx * 3;
+      vel.x = Math.max(-500, Math.min(500, vel.x));
+    }
+  });
+
+  window.addEventListener('resize', () => {
+    fw = field.clientWidth; fh = field.clientHeight;
+  });
+}
 </script>
 </body>
 </html>
