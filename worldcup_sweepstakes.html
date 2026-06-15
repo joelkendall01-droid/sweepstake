@@ -235,6 +235,16 @@
 
     /* Predictions tab */
     .predict-wrap { max-width: 560px; margin: 0 auto; padding: 0 16px 28px; }
+    .section-title-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+    .section-title-row .section-title { margin-bottom: 0; }
+    .info-btn { background: none; border: none; font-size: 14px; cursor: pointer; opacity: .6; padding: 0 0 0 8px; line-height: 1; }
+    .info-btn:hover { opacity: 1; }
+    .predict-info { display: none; background: var(--card-bg); border-radius: 10px; padding: 12px 14px; font-size: 12px; color: var(--muted-2); box-shadow: 0 1px 4px var(--card-shadow-sm); margin-bottom: 12px; }
+    .predict-info.open { display: block; }
+    .predict-info strong { display: block; color: var(--text); font-size: 13px; margin-bottom: 6px; }
+    .predict-info ul { margin: 0 0 8px 18px; }
+    .predict-info li { margin-bottom: 4px; }
+    .predict-info p { margin: 0; }
     .predict-picker { display: flex; gap: 8px; margin-bottom: 16px; }
     .predict-picker-btn { flex: 1; padding: 12px; border-radius: 10px; font-weight: 800; font-size: 13px; background: var(--card-bg); color: var(--muted-2); cursor: pointer; box-shadow: 0 1px 4px var(--card-shadow-sm); text-align: center; user-select: none; }
     .predict-current { font-size: 12px; color: var(--muted-2); margin-bottom: 16px; text-align: center; }
@@ -310,7 +320,19 @@
 <div class="container tab-content" id="predictionsTab">
   <div class="predict-wrap">
     <div id="predictPicker"></div>
-    <div class="section-title">🏅 Predictions Leaderboard</div>
+    <div class="section-title-row">
+      <div class="section-title">🏅 Predictions Leaderboard</div>
+      <button class="info-btn" onclick="togglePredictInfo()" aria-label="How scoring works">ℹ️</button>
+    </div>
+    <div class="predict-info" id="predictInfo">
+      <strong>How points work</strong>
+      <ul>
+        <li>🎯 <b>Exact scoreline</b> (e.g. you said 2-1, final was 2-1) → <b>3 points</b></li>
+        <li>✅ <b>Correct result</b> only — right winner or correct draw, wrong score (e.g. you said 2-1, final was 3-1) → <b>1 point</b></li>
+        <li>❌ Wrong result → <b>0 points</b></li>
+      </ul>
+      <p>Predictions lock once a match kicks off, and points are added automatically once the match finishes.</p>
+    </div>
     <div id="predictionsLeaderboard"></div>
     <div class="section-title">🗣️ Banter</div>
     <div class="banter-wrap" id="banterFeed"></div>
@@ -1804,6 +1826,10 @@ function renderPredictPicker() {
         '<div class="predict-picker-btn" onclick="setPlayer(\'' + name + '\')">' + name + '</div>'
       ).join('') + '</div>';
   }
+}
+
+function togglePredictInfo() {
+  document.getElementById('predictInfo').classList.toggle('open');
 }
 
 function scorePrediction(pred, actualHome, actualAway) {
