@@ -112,6 +112,15 @@
     .loading   { text-align: center; padding: 60px; color: #888; font-size: 15px; }
     .error-box { background: #fff0f0; border: 1px solid #ffcccc; border-radius: 10px; padding: 14px; color: #c00; margin: 12px 0; font-size: 13px; }
     .warn-box  { background: #fffbe6; border: 1px solid #ffe58f; border-radius: 10px; padding: 12px; color: #856404; margin: 12px 0; font-size: 12px; }
+
+    /* Football toy */
+    .football-toy {
+      position: fixed; top: 0; left: 0; width: 54px; height: 54px; font-size: 46px;
+      line-height: 54px; text-align: center; z-index: 150; cursor: grab;
+      touch-action: none; user-select: none; -webkit-user-select: none; -webkit-user-drag: none;
+      will-change: transform; filter: drop-shadow(0 7px 6px rgba(0,0,0,.38));
+    }
+    .football-toy.grabbing { cursor: grabbing; }
   </style>
 </head>
 <body>
@@ -128,6 +137,8 @@
 <div class="container">
   <div id="app"><div class="loading">⚽ Fetching live standings…</div></div>
 </div>
+
+<div class="football-toy" id="footballToy" title="Throw me!" aria-hidden="true">⚽</div>
 
 <script>
 // ── Owner map ────────────────────────────────────────────────────────
@@ -501,6 +512,130 @@ async function render() {
 
 render();
 setInterval(render, 2 * 60 * 1000); // auto-refresh every 2 min
+
+// ── Football toy — draggable, throwable, bouncy ───────────────────────
+function initFootballToy() {
+  const el = document.getElementById('footballToy');
+  if (!el) return;
+
+  const SIZE = 54;
+  const GRAVITY = 2600;
+  const BOUNCE = 0.72;
+  const AIR_DRAG = 6e-4;
+  const FLOOR_DAMP = 0.86;
+  const FLOOR_FRICTION = 0.985;
+  const SPIN_FACTOR = 2.4;
+
+  let vw = window.innerWidth, vh = window.innerHeight;
+  const pos = { x: 20, y: vh - SIZE - 6 };
+  const vel = { x: 0, y: 0 };
+  let rotation = 0, spin = 0;
+  let dragging = false, pointerId = null;
+  let grabX = 0, grabY = 0;
+  let history = [];
+
+  const floorY = () => vh - SIZE;
+
+  function clampPos() {
+    vw = window.innerWidth; vh = window.innerHeight;
+    pos.x = Math.max(0, Math.min(vw - SIZE, pos.x));
+    pos.y = Math.max(0, Math.min(vh - SIZE, pos.y));
+  }
+
+  function applyTransform() {
+    el.style.transform = 'translate(' + pos.x + 'px, ' + pos.y + 'px) rotate(' + rotation + 'deg)';
+  }
+
+  let lastTime = performance.now();
+  function tick(now) {
+    let dt = (now - lastTime) / 1000;
+    lastTime = now;
+    if (dt > 0.032) dt = 0.032;
+
+    if (!dragging) {
+      vel.y += GRAVITY * dt;
+      vel.x *= 1 - AIR_DRAG;
+      vel.y *= 1 - AIR_DRAG;
+      pos.x += vel.x * dt;
+      pos.y += vel.y * dt;
+      rotation += spin * dt;
+
+      if (pos.x < 0) { pos.x = 0; vel.x = -vel.x * BOUNCE; }
+      else if (pos.x > vw - SIZE) { pos.x = vw - SIZE; vel.x = -vel.x * BOUNCE; }
+
+      if (pos.y < 0) { pos.y = 0; vel.y = -vel.y * BOUNCE; }
+
+      if (pos.y > floorY()) {
+        pos.y = floorY();
+        vel.y = -vel.y * BOUNCE;
+        vel.x *= FLOOR_DAMP;
+        if (Math.abs(vel.y) < 55) vel.y = 0;
+      }
+
+      if (pos.y >= floorY() - 0.5) {
+        vel.x *= FLOOR_FRICTION;
+        if (Math.abs(vel.x) < 4) vel.x = 0;
+        spin = vel.x * SPIN_FACTOR;
+      }
+    }
+    applyTransform();
+    requestAnimationFrame(tick);
+  }
+  requestAnimationFrame(tick);
+
+  function onPointerDown(e) {
+    dragging = true;
+    pointerId = e.pointerId;
+    try { el.setPointerCapture(pointerId); } catch {}
+    el.classList.add('grabbing');
+    grabX = e.clientX - pos.x;
+    grabY = e.clientY - pos.y;
+    vel.x = 0; vel.y = 0; spin = 0;
+    history = [{ t: performance.now(), x: e.clientX, y: e.clientY }];
+    e.preventDefault();
+  }
+
+  function onPointerMove(e) {
+    if (!dragging || e.pointerId !== pointerId) return;
+    const last = history[history.length - 1];
+    if (last) rotation += (e.clientX - last.x) * 0.6;
+    pos.x = e.clientX - grabX;
+    pos.y = e.clientY - grabY;
+    clampPos();
+    history.push({ t: performance.now(), x: e.clientX, y: e.clientY });
+    if (history.length > 6) history.shift();
+    e.preventDefault();
+  }
+
+  function onPointerUp(e) {
+    if (!dragging || (pointerId != null && e.pointerId !== pointerId)) return;
+    dragging = false;
+    el.classList.remove('grabbing');
+    try { el.releasePointerCapture(pointerId); } catch {}
+    const now = performance.now();
+    const recent = history.filter(p => now - p.t < 120);
+    if (recent.length >= 2) {
+      const first = recent[0], last = recent[recent.length - 1];
+      const dt = (last.t - first.t) / 1000;
+      if (dt > 0) {
+        vel.x = (last.x - first.x) / dt;
+        vel.y = (last.y - first.y) / dt;
+      }
+    }
+    spin = vel.x * SPIN_FACTOR;
+    pointerId = null;
+    history = [];
+  }
+
+  el.addEventListener('pointerdown', onPointerDown);
+  window.addEventListener('pointermove', onPointerMove);
+  window.addEventListener('pointerup', onPointerUp);
+  window.addEventListener('pointercancel', onPointerUp);
+  window.addEventListener('resize', clampPos);
+  applyTransform();
+}
+
+initFootballToy();
 </script>
 </body>
 </html>
