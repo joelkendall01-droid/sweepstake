@@ -1,0 +1,506 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>⚽ World Cup 2026 Sweepstakes</title>
+  <style>
+    :root { color-scheme: light; }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: system-ui, -apple-system, sans-serif; background: #f0f2ff; color: #1a1a2e; }
+
+    .header {
+      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 60%, #0f3460 100%);
+      color: white; padding: 28px 20px; text-align: center;
+    }
+    .header h1 { font-size: 26px; font-weight: 900; letter-spacing: -0.5px; }
+    .header h1 span { color: #f5a623; }
+    .subtitle { opacity: 0.65; margin-top: 6px; font-size: 14px; }
+    .meta { font-size: 11px; opacity: 0.45; margin-top: 10px; display: flex; align-items: center; justify-content: center; gap: 10px; }
+    .refresh-btn {
+      background: rgba(255,255,255,0.15); border: 1px solid rgba(255,255,255,0.3);
+      color: white; border-radius: 6px; padding: 3px 10px; font-size: 11px;
+      cursor: pointer; transition: background .2s;
+    }
+    .refresh-btn:hover { background: rgba(255,255,255,0.25); }
+
+    .container { max-width: 920px; margin: 0 auto; padding: 24px 16px 48px; }
+
+    /* Podium */
+    .podium-caption { text-align: center; font-size: 11px; color: #aaa; margin-bottom: 10px; }
+    .podium-wrap { display: flex; justify-content: center; align-items: flex-end; gap: 12px; margin-bottom: 32px; }
+    .podium-item { text-align: center; flex: 1; max-width: 180px; }
+    .podium-avatar {
+      width: 60px; height: 60px; border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 20px; font-weight: 900; color: white; margin: 0 auto 8px;
+    }
+    .podium-name { font-weight: 800; font-size: 17px; }
+    .podium-points { font-size: 32px; font-weight: 900; line-height: 1; }
+    .podium-pts-label { font-size: 11px; color: #888; margin-top: 2px; }
+    .podium-block { border-radius: 10px 10px 0 0; margin-top: 10px; display: flex; align-items: center; justify-content: center; font-size: 28px; }
+    .rank-1 .podium-avatar { background: linear-gradient(135deg, #f7b733, #fc4a1a); box-shadow: 0 4px 16px rgba(247,183,51,.45); }
+    .rank-1 .podium-block  { background: linear-gradient(135deg, #f7b733, #fc4a1a); height: 100px; }
+    .rank-1 .podium-points { color: #c8720a; }
+    .rank-2 .podium-avatar { background: linear-gradient(135deg, #bdc3c7, #95a5a6); box-shadow: 0 4px 16px rgba(149,165,166,.4); }
+    .rank-2 .podium-block  { background: linear-gradient(135deg, #bdc3c7, #95a5a6); height: 72px; }
+    .rank-2 .podium-points { color: #6c7a7d; }
+    .rank-3 .podium-avatar { background: linear-gradient(135deg, #cd7f32, #8b5e3c); box-shadow: 0 4px 16px rgba(139,94,60,.35); }
+    .rank-3 .podium-block  { background: linear-gradient(135deg, #cd7f32, #8b5e3c); height: 52px; }
+    .rank-3 .podium-points { color: #7a4f2e; }
+
+    /* Prizes */
+    .section-title { font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: 1px; color: #aaa; margin-bottom: 12px; }
+    .prizes { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 12px; }
+    .prize-card { background: white; border-radius: 12px; padding: 16px 12px; text-align: center; box-shadow: 0 2px 8px rgba(0,0,0,.07); }
+    .prize-emoji { font-size: 26px; }
+    .prize-place { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .3px; margin-top: 6px; }
+    .prize-name  { font-size: 13px; font-weight: 800; margin-top: 4px; }
+
+    /* Side bets */
+    .side-bets { display: flex; flex-direction: column; gap: 8px; margin-bottom: 28px; }
+    .side-bet { background: white; border-radius: 10px; padding: 10px 14px; font-size: 13px; box-shadow: 0 2px 8px rgba(0,0,0,.07); }
+
+    /* Live scores */
+    .matches-list { display: flex; flex-direction: column; gap: 8px; margin-bottom: 28px; }
+    .match-card { background: white; border-radius: 10px; padding: 10px 14px; box-shadow: 0 2px 8px rgba(0,0,0,.07); }
+    .match-teams { display: flex; align-items: center; justify-content: space-between; gap: 8px; font-size: 13px; }
+    .match-team { display: flex; align-items: center; gap: 6px; flex: 1; min-width: 0; }
+    .match-team.away { justify-content: flex-end; text-align: right; }
+    .match-team span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .match-score { font-weight: 800; font-size: 15px; min-width: 46px; text-align: center; flex-shrink: 0; }
+    .match-status { font-size: 11px; color: #aaa; text-align: center; margin-top: 6px; }
+    .match-status.live { color: #e94560; font-weight: 700; }
+    .empty-box { text-align: center; padding: 20px; color: #aaa; font-size: 13px; background: white; border-radius: 10px; margin-bottom: 28px; }
+
+    /* Knockout tracker */
+    .knockout-round { margin-bottom: 16px; }
+    .knockout-round-title { font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: .5px; color: #aaa; margin-bottom: 8px; }
+    .knockout-match { background: white; border-radius: 10px; padding: 10px 14px; margin-bottom: 6px; font-size: 13px; box-shadow: 0 1px 4px rgba(0,0,0,.06); display: flex; align-items: center; flex-wrap: wrap; gap: 6px; }
+    .knockout-match .tbd { color: #bbb; font-style: italic; }
+    .knockout-score { font-weight: 800; }
+    .knockout-status { margin-left: auto; font-size: 11px; color: #aaa; }
+
+    /* Owner badge */
+    .owner-badge { display: inline-flex; align-items: center; justify-content: center; width: 18px; height: 18px; border-radius: 50%; font-size: 9px; font-weight: 800; color: white; flex-shrink: 0; }
+
+    /* Team cards */
+    .teams-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 16px; margin-bottom: 28px; }
+    .player-card { background: white; border-radius: 14px; overflow: hidden; box-shadow: 0 2px 10px rgba(0,0,0,.08); }
+    .player-header { padding: 14px 18px; display: flex; align-items: center; gap: 12px; }
+    .player-icon { width: 42px; height: 42px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 17px; font-weight: 900; color: white; flex-shrink: 0; }
+    .player-info h3 { font-weight: 800; font-size: 15px; }
+    .player-total { font-size: 12px; color: #888; margin-top: 2px; }
+    .teams-list { padding: 0 10px 10px; }
+    .team-row { display: flex; align-items: center; padding: 6px 8px; border-radius: 7px; font-size: 13px; }
+    .team-row:nth-child(odd) { background: #f6f7ff; }
+    .team-flag { width: 22px; height: 16px; object-fit: cover; border-radius: 2px; margin-right: 8px; flex-shrink: 0; }
+    .team-name   { flex: 1; }
+    .team-record { font-size: 11px; color: #aaa; margin-right: 8px; white-space: nowrap; }
+    .team-pts    { font-weight: 800; min-width: 24px; text-align: right; }
+
+    .bg-joel    { background: linear-gradient(135deg, #667eea, #764ba2); }
+    .bg-josh    { background: linear-gradient(135deg, #f093fb, #f5576c); }
+    .bg-eleanor { background: linear-gradient(135deg, #43e97b, #38f9d7); }
+    .c-joel     { color: #764ba2; }
+    .c-josh     { color: #f5576c; }
+    .c-eleanor  { color: #11c98e; }
+    .border-joel    { border-top: 3px solid #764ba2; }
+    .border-josh    { border-top: 3px solid #f5576c; }
+    .border-eleanor { border-top: 3px solid #11c98e; }
+
+    .loading   { text-align: center; padding: 60px; color: #888; font-size: 15px; }
+    .error-box { background: #fff0f0; border: 1px solid #ffcccc; border-radius: 10px; padding: 14px; color: #c00; margin: 12px 0; font-size: 13px; }
+    .warn-box  { background: #fffbe6; border: 1px solid #ffe58f; border-radius: 10px; padding: 12px; color: #856404; margin: 12px 0; font-size: 12px; }
+  </style>
+</head>
+<body>
+
+<div class="header">
+  <h1>⚽ World Cup <span>2026</span> Sweepstakes</h1>
+  <div class="subtitle">Joel · Josh · Eleanor &nbsp;|&nbsp; Group Stage Tracker</div>
+  <div class="meta">
+    <span id="lastUpdated">Loading…</span>
+    <button class="refresh-btn" onclick="render()">↻ Refresh</button>
+  </div>
+</div>
+
+<div class="container">
+  <div id="app"><div class="loading">⚽ Fetching live standings…</div></div>
+</div>
+
+<script>
+// ── Owner map ────────────────────────────────────────────────────────
+const OWNER_MAP = {};
+const assign = (owner, names) => names.forEach(n => OWNER_MAP[n.toLowerCase()] = owner);
+
+assign('Joel', [
+  'colombia','tunisia','uruguay','ecuador','spain','iraq','japan',
+  'australia','belgium','austria','qatar','argentina','mexico',
+  'ghana','uzbekistan','france'
+]);
+assign('Josh', [
+  'egypt','canada','south korea','korea republic','korea',
+  'turkey','türkiye','turkiye',
+  'curacao','curaçao',
+  'haiti','paraguay',
+  "cote d'ivoire","côte d'ivoire","ivory coast","cote d ivoire",
+  'croatia','jordan','netherlands','germany',
+  'bosnia & herzegovina','bosnia and herzegovina','bosnia-herzegovina','bosnia',
+  'panama','iran','ir iran','islamic republic of iran','sweden'
+]);
+assign('Eleanor', [
+  'czechia','czech republic',
+  'brazil','saudi arabia','new zealand','portugal','morocco',
+  'england','norway',
+  'dr congo','democratic republic of congo','congo dr','congo, dr','drc',
+  'cabo verde','cape verde',
+  'senegal','south africa','scotland','algeria','switzerland',
+  'united states','usa','us'
+]);
+
+const PLAYER_CFG = {
+  Joel:    { icon: 'J',  bg: 'bg-joel',    c: 'c-joel',    border: 'border-joel'    },
+  Josh:    { icon: 'Jo', bg: 'bg-josh',    c: 'c-josh',    border: 'border-josh'    },
+  Eleanor: { icon: 'E',  bg: 'bg-eleanor', c: 'c-eleanor', border: 'border-eleanor' },
+};
+
+const PRIZES = [
+  { emoji: '🍺', name: 'Beer' },
+  { emoji: '🍫', name: 'Choccy Buttons' },
+  { emoji: '🍬', name: 'Haribo' },
+];
+const RANK_LABELS = ['🥇 1st', '🥈 2nd', '🥉 3rd'];
+
+// ── Knockout round definitions (fixed 2026 World Cup schedule) ────────
+// depth = "how far a team has reached" once they appear in / win a match in that round.
+const ROUNDS = [
+  { key: 'r32',   label: 'Round of 32',       start: '2026-06-28', end: '2026-07-03', depth: 1 },
+  { key: 'r16',   label: 'Round of 16',       start: '2026-07-04', end: '2026-07-07', depth: 2 },
+  { key: 'qf',    label: 'Quarter-Finals',    start: '2026-07-09', end: '2026-07-11', depth: 3 },
+  { key: 'sf',    label: 'Semi-Finals',       start: '2026-07-14', end: '2026-07-15', depth: 4 },
+  { key: 'third', label: '3rd Place Playoff', start: '2026-07-18', end: '2026-07-18', depth: 4 },
+  { key: 'final', label: 'Final',             start: '2026-07-19', end: '2026-07-19', depth: 5 },
+];
+
+// ── Name matching ────────────────────────────────────────────────────
+function findOwner(displayName) {
+  const key = displayName.toLowerCase().trim();
+  if (OWNER_MAP[key]) return OWNER_MAP[key];
+  for (const [k, v] of Object.entries(OWNER_MAP)) {
+    if (key.includes(k) || k.includes(key)) return v;
+  }
+  return null;
+}
+
+// ── Fetch ────────────────────────────────────────────────────────────
+async function fetchStandings() {
+  const url = 'https://site.web.api.espn.com/apis/v2/sports/soccer/fifa.world/standings?season=2026';
+  const res = await fetch(url);
+  if (!res.ok) throw new Error('ESPN returned ' + res.status);
+  return res.json();
+}
+
+async function fetchScoreboard(dates) {
+  const url = 'https://site.api.espn.com/apis/site/v2/sports/soccer/fifa.world/scoreboard' +
+    (dates ? '?dates=' + dates : '');
+  const res = await fetch(url);
+  if (!res.ok) throw new Error('ESPN returned ' + res.status);
+  return res.json();
+}
+
+const KNOCKOUT_DATES = '20260628-20260719';
+
+// ── Parse ────────────────────────────────────────────────────────────
+function parseStandings(data) {
+  const totals    = { Joel: 0, Josh: 0, Eleanor: 0 };
+  const teams     = { Joel: [], Josh: [], Eleanor: [] };
+  const unmatched = [];
+
+  for (const group of (data.children || [])) {
+    for (const entry of (group.standings?.entries || [])) {
+      const name = entry.team.displayName;
+      const flag = entry.team.logos?.[0]?.href || '';
+      const stats = {};
+      for (const s of (entry.stats || [])) stats[s.name] = s.value;
+
+      const pts  = stats.points       || 0;
+      const wins = stats.wins         || 0;
+      const drws = stats.ties         || 0;
+      const loss = stats.losses       || 0;
+      const gp   = stats.gamesPlayed  || 0;
+      const rec  = gp > 0 ? wins + 'W ' + drws + 'D ' + loss + 'L' : '—';
+
+      const owner = findOwner(name);
+      if (owner) {
+        totals[owner] += pts;
+        teams[owner].push({ name, flag, pts, rec });
+      } else {
+        unmatched.push(name);
+      }
+    }
+  }
+
+  const ranked = Object.entries(totals)
+    .sort((a, b) => b[1] - a[1])
+    .map(([n, pts], i) => ({ name: n, pts, rank: i + 1 }));
+
+  return { totals, teams, ranked, unmatched };
+}
+
+function getRound(dateStr) {
+  const d = dateStr.slice(0, 10);
+  return ROUNDS.find(r => d >= r.start && d <= r.end) || null;
+}
+
+function parseKnockout(data) {
+  const teamDepth = {};
+  const matchesByRound = {};
+
+  for (const event of (data.events || [])) {
+    const round = getRound(event.date);
+    if (!round) continue;
+
+    const comp = event.competitions?.[0];
+    const competitors = (comp?.competitors || []).map(c => {
+      const name = c.team.displayName;
+      const isReal = !!c.team.isActive;
+      return { name, isReal, owner: isReal ? findOwner(name) : null, score: c.score, winner: !!c.winner };
+    });
+
+    for (const c of competitors) {
+      if (!c.isReal) continue;
+      const key = c.name.toLowerCase();
+      teamDepth[key] = Math.max(teamDepth[key] || 0, round.depth);
+      if (c.winner && round.key !== 'third') {
+        teamDepth[key] = Math.max(teamDepth[key], round.depth + 1);
+      }
+    }
+
+    (matchesByRound[round.key] || (matchesByRound[round.key] = [])).push({
+      date: event.date, status: event.status, competitors
+    });
+  }
+
+  return { teamDepth, matchesByRound };
+}
+
+// ── Knockout-based prize ranking ────────────────────────────────────
+// "Last team standing wins": rank owners by their deepest surviving team,
+// then their next-deepest, etc. Before the knockouts start every depth is 0,
+// so this falls back to the group-stage points total (today's behaviour).
+function ownerDepths(owner, teams, teamDepth) {
+  return (teams[owner] || [])
+    .map(t => teamDepth[t.name.toLowerCase()] || 0)
+    .sort((a, b) => b - a);
+}
+
+function compareOwners(a, b, teams, teamDepth, totals) {
+  const da = ownerDepths(a, teams, teamDepth);
+  const db = ownerDepths(b, teams, teamDepth);
+  for (let i = 0; i < da.length; i++) {
+    if (da[i] !== db[i]) return db[i] - da[i];
+  }
+  return totals[b] - totals[a];
+}
+
+// ── Render helpers ───────────────────────────────────────────────────
+function ownerBadge(owner) {
+  if (!owner) return '';
+  const cfg = PLAYER_CFG[owner];
+  return '<span class="owner-badge ' + cfg.bg + '" title="' + owner + '">' + cfg.icon + '</span>';
+}
+
+function formatMatchStatus(event) {
+  const t = event.status?.type || {};
+  if (t.state === 'in')   return { state: 'in',   text: t.shortDetail || 'LIVE' };
+  if (t.state === 'post') return { state: 'post', text: 'FT' };
+  return { state: 'pre', text: new Date(event.date).toLocaleString([], { weekday: 'short', hour: '2-digit', minute: '2-digit' }) };
+}
+
+// ── Render ───────────────────────────────────────────────────────────
+function renderPodium(ranked, knockoutStarted) {
+  const order   = ranked.length >= 3 ? [ranked[1], ranked[0], ranked[2]] : ranked;
+  const rankCls = ['rank-2', 'rank-1', 'rank-3'];
+  const blocks  = ['🥈', '🏆', '🥉'];
+  const caption = knockoutStarted ? '' : '<div class="podium-caption">Provisional — based on group stage points (knockout stage hasn\'t started yet)</div>';
+  return caption + '<div class="podium-wrap">' +
+    order.map((p, i) => {
+      const cfg = PLAYER_CFG[p.name];
+      return '<div class="podium-item ' + rankCls[i] + '">' +
+        '<div class="podium-avatar ' + cfg.bg + '">' + cfg.icon + '</div>' +
+        '<div class="podium-name">' + p.name + '</div>' +
+        '<div class="podium-points ' + cfg.c + '">' + p.pts + '</div>' +
+        '<div class="podium-pts-label">pts</div>' +
+        '<div class="podium-block">' + blocks[i] + '</div>' +
+        '</div>';
+    }).join('') + '</div>';
+}
+
+function renderPrizes(knockoutRanked, groupRanked) {
+  const cards = '<div class="section-title">Prizes — Knockout Stage</div><div class="prizes">' +
+    knockoutRanked.map((p, i) => {
+      const cfg = PLAYER_CFG[p.name];
+      const prz = PRIZES[i];
+      return '<div class="prize-card ' + cfg.border + '">' +
+        '<div class="prize-emoji">' + prz.emoji + '</div>' +
+        '<div class="prize-place ' + cfg.c + '">' + RANK_LABELS[i] + ' — ' + p.name + '</div>' +
+        '<div class="prize-name">' + prz.name + '</div>' +
+        '</div>';
+    }).join('') + '</div>';
+
+  const mealOwner = groupRanked[0];
+  const cookOwner = groupRanked[groupRanked.length - 1];
+  const sideBets = '<div class="side-bets">' +
+    '<div class="side-bet">🍽️ <strong>Home Cooked Meal</strong> — ' + mealOwner.name + ' (group stage winner)</div>' +
+    '<div class="side-bet">👨‍🍳 <strong>' + cookOwner.name + '</strong> must cook for ' + mealOwner.name + ' (group stage last place)</div>' +
+    '</div>';
+
+  return cards + sideBets;
+}
+
+function renderLiveScores(data) {
+  const events = data.events || [];
+  const html = '<div class="section-title">Live & Today\'s Matches</div>';
+  if (!events.length) {
+    return html + '<div class="empty-box">No matches scheduled today</div>';
+  }
+
+  return html + '<div class="matches-list">' + events.map(event => {
+    const comp = event.competitions?.[0];
+    const competitors = comp?.competitors || [];
+    const home = competitors.find(c => c.homeAway === 'home') || competitors[0];
+    const away = competitors.find(c => c.homeAway === 'away') || competitors[1];
+    const status = formatMatchStatus(event);
+    const score = status.state === 'pre' ? 'vs' : (home.score ?? '0') + ' - ' + (away.score ?? '0');
+
+    const teamHtml = (c) => {
+      const name = c.team.displayName;
+      const owner = findOwner(name);
+      const flag = c.team.logos?.[0]?.href || '';
+      return (flag ? '<img class="team-flag" src="' + flag + '" alt="" onerror="this.style.display=\'none\'">' : '') +
+        '<span>' + name + '</span>' + ownerBadge(owner);
+    };
+
+    return '<div class="match-card">' +
+      '<div class="match-teams">' +
+        '<div class="match-team home">' + teamHtml(home) + '</div>' +
+        '<div class="match-score">' + score + '</div>' +
+        '<div class="match-team away">' + teamHtml(away) + '</div>' +
+      '</div>' +
+      '<div class="match-status' + (status.state === 'in' ? ' live' : '') + '">' + status.text + '</div>' +
+    '</div>';
+  }).join('') + '</div>';
+}
+
+function renderKnockoutTracker(matchesByRound) {
+  const html = '<div class="section-title">Knockout Tracker</div>';
+  const roundsWithMatches = ROUNDS.filter(r => (matchesByRound[r.key] || []).length);
+
+  if (!roundsWithMatches.length) {
+    return html + '<div class="empty-box">Knockout schedule not available yet</div>';
+  }
+
+  const teamLabel = (c) => {
+    if (c.isReal) return ownerBadge(c.owner) + ' <strong>' + c.name + '</strong>';
+    return '<span class="tbd">' + c.name + '</span>';
+  };
+
+  return html + roundsWithMatches.map(round => {
+    const matches = matchesByRound[round.key].slice().sort((a, b) => new Date(a.date) - new Date(b.date));
+    return '<div class="knockout-round">' +
+      '<div class="knockout-round-title">' + round.label + '</div>' +
+      matches.map(m => {
+        const [a, b] = m.competitors;
+        const status = formatMatchStatus(m);
+        const score = status.state === 'pre' ? '' : '<span class="knockout-score">' + (a.score ?? '0') + ' - ' + (b.score ?? '0') + '</span>';
+        return '<div class="knockout-match">' +
+          teamLabel(a) + ' <span style="color:#bbb">vs</span> ' + teamLabel(b) + ' ' + score +
+          '<span class="knockout-status">' + status.text + '</span>' +
+        '</div>';
+      }).join('') +
+    '</div>';
+  }).join('');
+}
+
+function renderTeams(ranked, teams) {
+  return '<div class="section-title">Group Stage — Team Breakdown</div><div class="teams-grid">' +
+    ranked.map(p => {
+      const cfg  = PLAYER_CFG[p.name];
+      const list = (teams[p.name] || []).sort((a, b) => b.pts - a.pts);
+      const badge = ['👑','🥈','🥉'][p.rank - 1] || '';
+      return '<div class="player-card">' +
+        '<div class="player-header">' +
+          '<div class="player-icon ' + cfg.bg + '">' + cfg.icon + '</div>' +
+          '<div class="player-info">' +
+            '<h3>' + p.name + ' ' + badge + '</h3>' +
+            '<div class="player-total ' + cfg.c + '">' + p.pts + ' pts · ' + list.length + ' teams</div>' +
+          '</div>' +
+        '</div>' +
+        '<div class="teams-list">' +
+          list.map(t =>
+            '<div class="team-row">' +
+              (t.flag ? '<img class="team-flag" src="' + t.flag + '" alt="" onerror="this.style.display=\'none\'">' : '') +
+              '<span class="team-name">' + t.name + '</span>' +
+              '<span class="team-record">' + t.rec + '</span>' +
+              '<span class="team-pts ' + cfg.c + '">' + t.pts + '</span>' +
+            '</div>'
+          ).join('') +
+        '</div>' +
+      '</div>';
+    }).join('') + '</div>';
+}
+
+// ── Main ─────────────────────────────────────────────────────────────
+async function render() {
+  document.getElementById('lastUpdated').textContent = 'Updating…';
+  const app = document.getElementById('app');
+
+  const [standingsResult, liveResult, knockoutResult] = await Promise.allSettled([
+    fetchStandings(),
+    fetchScoreboard(),
+    fetchScoreboard(KNOCKOUT_DATES),
+  ]);
+
+  if (standingsResult.status !== 'fulfilled') {
+    document.getElementById('lastUpdated').textContent = 'Update failed';
+    app.innerHTML = '<div class="error-box">❌ Could not load standings: ' + standingsResult.reason.message +
+      '<br><br>Make sure you\'re connected to the internet and try the ↻ Refresh button.</div>';
+    return;
+  }
+
+  const { totals, teams, ranked, unmatched } = parseStandings(standingsResult.value);
+
+  let teamDepth = {}, matchesByRound = {};
+  if (knockoutResult.status === 'fulfilled') {
+    ({ teamDepth, matchesByRound } = parseKnockout(knockoutResult.value));
+  }
+
+  const knockoutStarted = Object.values(teamDepth).some(d => d > 0);
+  const knockoutRanked = Object.keys(totals)
+    .sort((a, b) => compareOwners(a, b, teams, teamDepth, totals))
+    .map((name, i) => ({ name, pts: totals[name], rank: i + 1 }));
+
+  document.getElementById('lastUpdated').textContent =
+    'Updated ' + new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+  app.innerHTML =
+    renderPodium(knockoutRanked, knockoutStarted) +
+    renderPrizes(knockoutRanked, ranked) +
+    (liveResult.status === 'fulfilled'
+      ? renderLiveScores(liveResult.value)
+      : '<div class="warn-box">⚠️ Could not load live scores: ' + liveResult.reason.message + '</div>') +
+    renderTeams(ranked, teams) +
+    (knockoutResult.status === 'fulfilled'
+      ? renderKnockoutTracker(matchesByRound)
+      : '<div class="warn-box">⚠️ Could not load knockout schedule: ' + knockoutResult.reason.message + '</div>') +
+    (unmatched.length
+      ? '<div class="warn-box">⚠️ Unmatched teams: ' + unmatched.join(', ') + '</div>'
+      : '');
+}
+
+render();
+setInterval(render, 2 * 60 * 1000); // auto-refresh every 2 min
+</script>
+</body>
+</html>
