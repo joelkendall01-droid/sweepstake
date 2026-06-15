@@ -4,6 +4,8 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>⚽ World Cup 2026 Sweepstakes</title>
+  <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-database-compat.js"></script>
   <style>
     :root { color-scheme: light; }
     * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -181,6 +183,66 @@
     .sudoku-num { padding: 12px 0; border-radius: 8px; background: white; font-size: 18px; font-weight: 800; box-shadow: 0 1px 4px rgba(0,0,0,.06); cursor: pointer; color: #333; user-select: none; }
     .sudoku-num.erase { color: #e94560; font-size: 16px; }
     .sudoku-win { font-size: 13px; font-weight: 800; color: #2e7d32; margin-bottom: 10px; }
+
+    /* Kickoff countdown */
+    .kickoff-banner { background: linear-gradient(135deg, #1a1a2e, #0f3460); color: white; border-radius: 10px; padding: 10px 14px; margin-bottom: 16px; font-size: 12px; text-align: center; box-shadow: 0 2px 8px rgba(0,0,0,.1); }
+    .kickoff-banner .kickoff-teams { font-weight: 800; font-size: 13px; margin-bottom: 4px; }
+    .kickoff-banner .kickoff-time { font-size: 16px; font-weight: 900; color: #f5a623; letter-spacing: .5px; }
+    .kickoff-banner .owner-badge, .kickoff-banner .owner-name { vertical-align: middle; }
+
+    /* Venue info */
+    .match-venue { font-size: 10px; color: #bbb; text-align: center; margin-top: 4px; }
+
+    /* Golden Boot */
+    .goldenboot-list { display: flex; flex-direction: column; gap: 6px; margin-bottom: 28px; }
+    .goldenboot-row { display: flex; align-items: center; gap: 10px; background: white; border-radius: 10px; padding: 8px 14px; font-size: 13px; box-shadow: 0 1px 4px rgba(0,0,0,.06); }
+    .goldenboot-rank { font-weight: 900; color: #aaa; width: 22px; flex-shrink: 0; }
+    .goldenboot-player { flex: 1; font-weight: 700; }
+    .goldenboot-team { font-size: 11px; color: #aaa; margin-right: 8px; }
+    .goldenboot-goals { font-weight: 800; }
+
+    /* Predictions tab */
+    .predict-wrap { max-width: 560px; margin: 0 auto; padding: 0 16px 28px; }
+    .predict-picker { display: flex; gap: 8px; margin-bottom: 16px; }
+    .predict-picker-btn { flex: 1; padding: 12px; border-radius: 10px; font-weight: 800; font-size: 13px; background: white; color: #888; cursor: pointer; box-shadow: 0 1px 4px rgba(0,0,0,.06); text-align: center; user-select: none; }
+    .predict-current { font-size: 12px; color: #888; margin-bottom: 16px; text-align: center; }
+    .predict-current a { color: #667eea; font-weight: 700; cursor: pointer; }
+    .predict-leaderboard { display: flex; flex-direction: column; gap: 6px; margin-bottom: 20px; }
+    .predict-lb-row { display: flex; align-items: center; gap: 10px; background: white; border-radius: 10px; padding: 10px 14px; font-size: 13px; box-shadow: 0 1px 4px rgba(0,0,0,.06); }
+    .predict-lb-rank { font-size: 16px; width: 22px; flex-shrink: 0; }
+    .predict-lb-name { flex: 1; font-weight: 800; }
+    .predict-lb-count { font-size: 11px; color: #aaa; margin-right: 8px; }
+    .predict-lb-pts { font-weight: 900; font-size: 15px; }
+    .predict-card { background: white; border-radius: 10px; padding: 10px 14px; box-shadow: 0 2px 8px rgba(0,0,0,.07); margin-bottom: 8px; }
+    .predict-card .match-teams { margin-bottom: 8px; }
+    .predict-inputs { display: flex; align-items: center; justify-content: center; gap: 10px; }
+    .predict-input { width: 44px; height: 36px; text-align: center; font-size: 16px; font-weight: 800; border: 1px solid #ddd; border-radius: 8px; }
+    .predict-save { padding: 8px 16px; border-radius: 8px; border: none; background: linear-gradient(135deg, #667eea, #764ba2); color: white; font-weight: 800; font-size: 12px; cursor: pointer; }
+    .predict-saved { font-size: 11px; color: #2e7d32; font-weight: 700; margin-left: 6px; }
+    .predict-locked { text-align: center; font-size: 12px; color: #aaa; }
+    .predict-locked .predict-picks { margin-top: 4px; font-size: 12px; color: #555; }
+    .predict-config-msg { text-align: center; padding: 16px; color: #aaa; font-size: 12px; background: white; border-radius: 10px; margin-bottom: 16px; }
+
+    /* Banter feed */
+    .banter-wrap { margin-bottom: 24px; }
+    .banter-feed { display: flex; flex-direction: column; gap: 6px; max-height: 260px; overflow-y: auto; margin-bottom: 8px; padding: 4px; }
+    .banter-msg { background: white; border-radius: 10px; padding: 8px 12px; font-size: 13px; box-shadow: 0 1px 4px rgba(0,0,0,.06); }
+    .banter-msg .banter-meta { font-size: 10px; color: #aaa; margin-bottom: 2px; }
+    .banter-msg .banter-meta b { font-weight: 800; }
+    .banter-input-row { display: flex; gap: 8px; }
+    .banter-input { flex: 1; padding: 10px 12px; border: 1px solid #ddd; border-radius: 8px; font-size: 13px; }
+    .banter-send { padding: 10px 18px; border-radius: 8px; border: none; background: linear-gradient(135deg, #667eea, #764ba2); color: white; font-weight: 800; font-size: 12px; cursor: pointer; }
+
+    /* Knockout bracket */
+    .bracket-scroll { overflow-x: auto; padding-bottom: 8px; margin-bottom: 16px; }
+    .bracket-row { display: flex; gap: 24px; min-width: max-content; padding: 4px; }
+    .bracket-col { display: flex; flex-direction: column; justify-content: space-around; gap: 12px; min-width: 170px; }
+    .bracket-col-title { font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: .5px; color: #aaa; text-align: center; margin-bottom: 4px; }
+    .bracket-match { background: white; border-radius: 8px; padding: 8px 10px; font-size: 11px; box-shadow: 0 1px 4px rgba(0,0,0,.06); border-left: 3px solid #667eea; }
+    .bracket-team { display: flex; align-items: center; gap: 4px; justify-content: space-between; padding: 2px 0; }
+    .bracket-team .tbd { color: #ccc; font-style: italic; }
+    .bracket-score { font-weight: 800; }
+    .bracket-status { font-size: 9px; color: #bbb; text-align: center; margin-top: 4px; }
   </style>
 </head>
 <body>
@@ -197,10 +259,24 @@
 <div class="tabs">
   <div class="tab active" id="tabStandings" onclick="switchTab('standings')">📊 Standings</div>
   <div class="tab" id="tabGames" onclick="switchTab('games')">🎮 Games</div>
+  <div class="tab" id="tabPredictions" onclick="switchTab('predictions')">🔮 Predictions</div>
 </div>
 
 <div class="container tab-content active" id="standingsTab">
+  <div id="kickoffBanner"></div>
   <div id="app"><div class="loading">⚽ Fetching live standings…</div></div>
+</div>
+
+<div class="container tab-content" id="predictionsTab">
+  <div class="predict-wrap">
+    <div id="predictPicker"></div>
+    <div class="section-title">🏅 Predictions Leaderboard</div>
+    <div id="predictionsLeaderboard"></div>
+    <div class="section-title">🗣️ Banter</div>
+    <div class="banter-wrap" id="banterFeed"></div>
+    <div class="section-title">⚽ Predict Upcoming Matches</div>
+    <div id="predictionsEntry"></div>
+  </div>
 </div>
 
 <div class="tab-content" id="gamesTab">
@@ -278,6 +354,28 @@
 <div class="football-toy" id="footballToy" title="Throw me!" aria-hidden="true">⚽</div>
 
 <script>
+// ── Firebase (shared predictions + banter) ─────────────────────────────
+// To enable: create a free project at https://console.firebase.google.com,
+// add a Web App, enable Realtime Database, then paste your config below.
+const firebaseConfig = {
+  apiKey: "AIzaSyAOJ2DjnI75IQYdW7skYGg-vyyIOLttM24",
+  databaseURL: "https://sweepstake-48153-default-rtdb.europe-west1.firebasedatabase.app",
+  projectId: "sweepstake-48153",
+};
+
+let predictionsRef = null, banterRef = null, firebaseReady = false;
+try {
+  if (firebaseConfig.apiKey !== "YOUR_API_KEY") {
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
+    predictionsRef = db.ref('predictions');
+    banterRef = db.ref('banter');
+    firebaseReady = true;
+  }
+} catch (e) {
+  console.warn('Firebase not configured:', e);
+}
+
 // ── Owner map ────────────────────────────────────────────────────────
 const OWNER_MAP = {};
 const assign = (owner, names) => names.forEach(n => OWNER_MAP[n.toLowerCase()] = owner);
@@ -633,6 +731,11 @@ function renderMatchCard(event, odds) {
       '</div>'
     : '';
 
+  const venue = comp?.venue;
+  const venueHtml = venue?.fullName
+    ? '<div class="match-venue">📍 ' + venue.fullName + (venue.address?.city ? ' · ' + venue.address.city : '') + '</div>'
+    : '';
+
   return '<div class="match-card">' +
     '<div class="match-teams">' +
       '<div class="match-team home">' + teamHtml(home) + '</div>' +
@@ -641,6 +744,7 @@ function renderMatchCard(event, odds) {
     '</div>' +
     '<div class="match-status' + (status.state === 'in' ? ' live' : '') + '">' + status.text + '</div>' +
     oddsHtml +
+    venueHtml +
   '</div>';
 }
 
@@ -674,20 +778,13 @@ function renderLiveScores(todayEvents, todayError, oddsMap, upcomingEvents, comp
     '<div class="match-tab-content" id="mCompleted">' + renderMatchesList(completedEvents, {}, 'No completed matches yet') + '</div>';
 }
 
-function renderKnockoutTracker(matchesByRound) {
-  const html = '<div class="section-title">Knockout Tracker</div>';
-  const roundsWithMatches = ROUNDS.filter(r => (matchesByRound[r.key] || []).length);
+function knockoutTeamLabel(c) {
+  if (c.isReal) return ownerBadge(c.owner) + ' <strong>' + withRank(c.name) + '</strong>';
+  return '<span class="tbd">' + c.name + '</span>';
+}
 
-  if (!roundsWithMatches.length) {
-    return html + '<div class="empty-box">Knockout schedule not available yet</div>';
-  }
-
-  const teamLabel = (c) => {
-    if (c.isReal) return ownerBadge(c.owner) + ' <strong>' + withRank(c.name) + '</strong>';
-    return '<span class="tbd">' + c.name + '</span>';
-  };
-
-  return html + roundsWithMatches.map(round => {
+function renderKnockoutTrackerList(roundsWithMatches, matchesByRound) {
+  return roundsWithMatches.map(round => {
     const matches = matchesByRound[round.key].slice().sort((a, b) => new Date(a.date) - new Date(b.date));
     return '<div class="knockout-round">' +
       '<div class="knockout-round-title">' + round.label + '</div>' +
@@ -696,12 +793,58 @@ function renderKnockoutTracker(matchesByRound) {
         const status = formatMatchStatus(m);
         const score = status.state === 'pre' ? '' : '<span class="knockout-score">' + (a.score ?? '0') + ' - ' + (b.score ?? '0') + '</span>';
         return '<div class="knockout-match">' +
-          teamLabel(a) + ' <span style="color:#bbb">vs</span> ' + teamLabel(b) + ' ' + score +
+          knockoutTeamLabel(a) + ' <span style="color:#bbb">vs</span> ' + knockoutTeamLabel(b) + ' ' + score +
           '<span class="knockout-status">' + status.text + '</span>' +
         '</div>';
       }).join('') +
     '</div>';
   }).join('');
+}
+
+function renderKnockoutBracket(roundsWithMatches, matchesByRound) {
+  const bracketRounds = roundsWithMatches.filter(r => r.key !== 'third');
+  const thirdPlace = matchesByRound['third'];
+
+  const matchBox = (m) => {
+    const [a, b] = m.competitors;
+    const status = formatMatchStatus(m);
+    return '<div class="bracket-match">' +
+      '<div class="bracket-team">' + knockoutTeamLabel(a) + (status.state !== 'pre' ? '<span class="bracket-score">' + (a.score ?? '0') + '</span>' : '') + '</div>' +
+      '<div class="bracket-team">' + knockoutTeamLabel(b) + (status.state !== 'pre' ? '<span class="bracket-score">' + (b.score ?? '0') + '</span>' : '') + '</div>' +
+      '<div class="bracket-status">' + status.text + '</div>' +
+    '</div>';
+  };
+
+  const cols = bracketRounds.map(round => {
+    const matches = matchesByRound[round.key].slice().sort((a, b) => new Date(a.date) - new Date(b.date));
+    return '<div class="bracket-col">' +
+      '<div class="bracket-col-title">' + round.label + '</div>' +
+      matches.map(matchBox).join('') +
+    '</div>';
+  }).join('');
+
+  const thirdPlaceHtml = thirdPlace?.length
+    ? '<div class="bracket-col"><div class="bracket-col-title">3rd Place</div>' + thirdPlace.map(matchBox).join('') + '</div>'
+    : '';
+
+  return '<div class="bracket-scroll"><div class="bracket-row">' + cols + thirdPlaceHtml + '</div></div>';
+}
+
+function renderKnockoutTracker(matchesByRound) {
+  const html = '<div class="section-title">Knockout Tracker</div>';
+  const roundsWithMatches = ROUNDS.filter(r => (matchesByRound[r.key] || []).length);
+
+  if (!roundsWithMatches.length) {
+    return html + '<div class="empty-box">Knockout schedule not available yet</div>';
+  }
+
+  return html +
+    '<div class="subtabs">' +
+      '<div class="subtab active" onclick="switchMatchTab(this,\'koList\')">📋 List</div>' +
+      '<div class="subtab" onclick="switchMatchTab(this,\'koBracket\')">🌳 Bracket</div>' +
+    '</div>' +
+    '<div class="match-tab-content active" id="koList">' + renderKnockoutTrackerList(roundsWithMatches, matchesByRound) + '</div>' +
+    '<div class="match-tab-content" id="koBracket">' + renderKnockoutBracket(roundsWithMatches, matchesByRound) + '</div>';
 }
 
 function renderTeams(ranked, teams) {
@@ -737,11 +880,12 @@ async function render() {
   document.getElementById('lastUpdated').textContent = 'Updating…';
   const app = document.getElementById('app');
 
-  const [standingsResult, liveResult, knockoutResult, allResult] = await Promise.allSettled([
+  const [standingsResult, liveResult, knockoutResult, allResult, goldenBootResult] = await Promise.allSettled([
     fetchStandings(),
     fetchScoreboard(),
     fetchScoreboard(KNOCKOUT_DATES),
     fetchScoreboard(ALL_DATES),
+    fetchGoldenBoot(),
   ]);
 
   if (standingsResult.status !== 'fulfilled') {
@@ -797,6 +941,7 @@ async function render() {
       completedEvents
     ) +
     renderTeams(ranked, teams) +
+    (goldenBootResult.status === 'fulfilled' ? renderGoldenBoot(goldenBootResult.value) : '') +
     renderKnockoutPrizes(knockoutRanked, knockoutStarted) +
     (knockoutResult.status === 'fulfilled'
       ? renderKnockoutTracker(matchesByRound)
@@ -804,6 +949,15 @@ async function render() {
     (unmatched.length
       ? '<div class="warn-box">⚠️ Unmatched teams: ' + unmatched.join(', ') + '</div>'
       : '');
+
+  // ── Predictions / kickoff countdown support ─────────────────────────
+  latestUpcoming = [...todayEvents, ...upcomingEvents].filter(e => !e.status?.type?.completed);
+  latestCompleted = completedEvents;
+  renderKickoffBanner(findNextSweepstakeMatch([...todayEvents, ...upcomingEvents]));
+  renderPredictionsLeaderboard();
+  if (document.getElementById('tabPredictions')?.classList.contains('active')) {
+    renderPredictionsEntry();
+  }
 }
 
 render();
@@ -937,9 +1091,12 @@ initFootballToy();
 function switchTab(name) {
   document.getElementById('tabStandings').classList.toggle('active', name === 'standings');
   document.getElementById('tabGames').classList.toggle('active', name === 'games');
+  document.getElementById('tabPredictions').classList.toggle('active', name === 'predictions');
   document.getElementById('standingsTab').classList.toggle('active', name === 'standings');
   document.getElementById('gamesTab').classList.toggle('active', name === 'games');
+  document.getElementById('predictionsTab').classList.toggle('active', name === 'predictions');
   if (name === 'games') initKeepyUppy();
+  if (name === 'predictions') { renderPredictPicker(); renderPredictionsEntry(); }
 }
 
 function switchGame(el, id) {
@@ -1465,6 +1622,299 @@ function checkSudokuWin() {
     resetSudokuHint();
   }
 }
+
+// ── Golden Boot — top scorers ───────────────────────────────────────
+async function fetchGoldenBoot() {
+  const url = 'https://sports.core.api.espn.com/v2/sports/soccer/leagues/fifa.world/seasons/2026/types/1/leaders?lang=en&region=us';
+  const res = await fetch(url);
+  if (!res.ok) throw new Error('ESPN returned ' + res.status);
+  const data = await res.json();
+  const cat = (data.categories || []).find(c => c.name === 'goalsLeaders');
+  const leaders = (cat?.leaders || []).slice(0, 5);
+
+  const enriched = await Promise.all(leaders.map(async l => {
+    try {
+      const [athlete, team] = await Promise.all([
+        fetch(l.athlete.$ref).then(r => r.json()),
+        fetch(l.team.$ref).then(r => r.json()),
+      ]);
+      return { player: athlete.displayName, team: team.displayName, goals: l.value };
+    } catch {
+      return null;
+    }
+  }));
+
+  return enriched.filter(Boolean);
+}
+
+function renderGoldenBoot(leaders) {
+  if (!leaders || !leaders.length) return '';
+  return '<div class="section-title">⚽ Golden Boot — Top Scorers</div><div class="goldenboot-list">' +
+    leaders.map((l, i) => {
+      const owner = findOwner(l.team);
+      return '<div class="goldenboot-row">' +
+        '<div class="goldenboot-rank">' + (i + 1) + '</div>' +
+        '<div class="goldenboot-player">' + l.player + '</div>' +
+        (owner ? ownerBadge(owner) : '') +
+        '<div class="goldenboot-team">' + l.team + '</div>' +
+        '<div class="goldenboot-goals">' + l.goals + '⚽</div>' +
+      '</div>';
+    }).join('') + '</div>';
+}
+
+// ── Kickoff countdown for sweepstake teams ──────────────────────────
+let kickoffTarget = null;
+
+function findNextSweepstakeMatch(events) {
+  const now = Date.now();
+  return events
+    .filter(e => formatMatchStatus(e).state === 'pre' && new Date(e.date).getTime() > now)
+    .filter(e => (e.competitions?.[0]?.competitors || []).some(c => findOwner(c.team.displayName)))
+    .sort((a, b) => new Date(a.date) - new Date(b.date))[0] || null;
+}
+
+function renderKickoffBanner(event) {
+  const el = document.getElementById('kickoffBanner');
+  if (!el) return;
+  if (!event) {
+    el.innerHTML = '';
+    kickoffTarget = null;
+    return;
+  }
+
+  const competitors = event.competitions?.[0]?.competitors || [];
+  const home = competitors.find(c => c.homeAway === 'home') || competitors[0];
+  const away = competitors.find(c => c.homeAway === 'away') || competitors[1];
+  const teamLabel = (c) => {
+    const owner = findOwner(c.team.displayName);
+    return c.team.displayName + (owner ? ' ' + ownerBadge(owner) : '');
+  };
+
+  kickoffTarget = new Date(event.date).getTime();
+  el.innerHTML = '<div class="kickoff-banner">' +
+    '<div class="kickoff-teams">⏳ Next sweepstake match: ' + teamLabel(home) + ' 🆚 ' + teamLabel(away) + '</div>' +
+    '<div class="kickoff-time" id="kickoffTime"></div>' +
+  '</div>';
+  tickKickoffCountdown();
+}
+
+function tickKickoffCountdown() {
+  const el = document.getElementById('kickoffTime');
+  if (!el || !kickoffTarget) return;
+  let diff = kickoffTarget - Date.now();
+  if (diff <= 0) { el.textContent = '⚽ Kicking off!'; return; }
+  const d = Math.floor(diff / 86400000); diff -= d * 86400000;
+  const h = Math.floor(diff / 3600000);  diff -= h * 3600000;
+  const m = Math.floor(diff / 60000);    diff -= m * 60000;
+  const s = Math.floor(diff / 1000);
+  el.textContent = (d ? d + 'd ' : '') + h + 'h ' + m + 'm ' + s + 's';
+}
+
+setInterval(tickKickoffCountdown, 1000);
+
+// ── Predictions + leaderboard + banter (Firebase) ───────────────────
+let latestUpcoming = [], latestCompleted = [], predictionsData = {}, banterMessages = [];
+let currentPlayer = localStorage.getItem('swPlayer');
+
+function escapeHtml(s) {
+  return s.replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+}
+
+function setPlayer(name) {
+  currentPlayer = name;
+  if (name) localStorage.setItem('swPlayer', name);
+  else localStorage.removeItem('swPlayer');
+  renderPredictPicker();
+  renderPredictionsEntry();
+  renderBanter();
+}
+
+function renderPredictPicker() {
+  const el = document.getElementById('predictPicker');
+  if (!el) return;
+  if (currentPlayer) {
+    el.innerHTML = '<div class="predict-current">Predicting as <strong>' + currentPlayer + '</strong> — <a onclick="setPlayer(null)">change</a></div>';
+  } else {
+    el.innerHTML = '<div class="predict-picker">' +
+      Object.keys(PLAYER_CFG).map(name =>
+        '<div class="predict-picker-btn" onclick="setPlayer(\'' + name + '\')">' + name + '</div>'
+      ).join('') + '</div>';
+  }
+}
+
+function scorePrediction(pred, actualHome, actualAway) {
+  if (!pred) return 0;
+  if (pred.home === actualHome && pred.away === actualAway) return 3;
+  const sign = v => v > 0 ? 1 : (v < 0 ? -1 : 0);
+  if (sign(pred.home - pred.away) === sign(actualHome - actualAway)) return 1;
+  return 0;
+}
+
+function renderPredictionsLeaderboard() {
+  const el = document.getElementById('predictionsLeaderboard');
+  if (!el) return;
+  if (!firebaseReady) {
+    el.innerHTML = '<div class="predict-config-msg">Predictions backend not configured yet — see setup instructions to enable shared predictions.</div>';
+    return;
+  }
+
+  const totals = { Joel: 0, Josh: 0, Eleanor: 0 };
+  const counts = { Joel: 0, Josh: 0, Eleanor: 0 };
+
+  for (const event of latestCompleted) {
+    const competitors = event.competitions?.[0]?.competitors || [];
+    const home = competitors.find(c => c.homeAway === 'home') || competitors[0];
+    const away = competitors.find(c => c.homeAway === 'away') || competitors[1];
+    if (!home || !away || home.score == null || away.score == null) continue;
+    const actualHome = Number(home.score), actualAway = Number(away.score);
+    const preds = predictionsData[event.id] || {};
+    for (const player of Object.keys(PLAYER_CFG)) {
+      const pred = preds[player];
+      if (!pred) continue;
+      totals[player] += scorePrediction(pred, actualHome, actualAway);
+      counts[player]++;
+    }
+  }
+
+  const ranked = Object.keys(PLAYER_CFG)
+    .map(name => ({ name, pts: totals[name], count: counts[name] }))
+    .sort((a, b) => b.pts - a.pts);
+  const medals = ['🥇', '🥈', '🥉'];
+
+  el.innerHTML = '<div class="predict-leaderboard">' + ranked.map((p, i) => {
+    const cfg = PLAYER_CFG[p.name];
+    return '<div class="predict-lb-row">' +
+      '<div class="predict-lb-rank">' + (medals[i] || '') + '</div>' +
+      '<div class="predict-lb-name ' + cfg.c + '">' + p.name + '</div>' +
+      '<div class="predict-lb-count">' + p.count + ' picks</div>' +
+      '<div class="predict-lb-pts ' + cfg.c + '">' + p.pts + ' pts</div>' +
+    '</div>';
+  }).join('') + '</div>';
+}
+
+function renderPredictionsEntry() {
+  const el = document.getElementById('predictionsEntry');
+  if (!el) return;
+  if (!firebaseReady) {
+    el.innerHTML = '<div class="predict-config-msg">Predictions backend not configured yet — see setup instructions to enable shared predictions.</div>';
+    return;
+  }
+  if (!latestUpcoming.length) {
+    el.innerHTML = '<div class="empty-box">No upcoming matches to predict right now</div>';
+    return;
+  }
+
+  el.innerHTML = latestUpcoming.map(event => {
+    const competitors = event.competitions?.[0]?.competitors || [];
+    const home = competitors.find(c => c.homeAway === 'home') || competitors[0];
+    const away = competitors.find(c => c.homeAway === 'away') || competitors[1];
+    const status = formatMatchStatus(event);
+    const preds = predictionsData[event.id] || {};
+
+    const teamHtml = (c) => {
+      const flag = c.team.logos?.[0]?.href || '';
+      return (flag ? '<img class="team-flag" src="' + flag + '" alt="" onerror="this.style.display=\'none\'">' : '') +
+        '<span>' + c.team.displayName + '</span>';
+    };
+
+    let body;
+    if (status.state !== 'pre') {
+      const picks = Object.keys(PLAYER_CFG)
+        .filter(p => preds[p])
+        .map(p => p + ': ' + preds[p].home + '-' + preds[p].away)
+        .join(' · ');
+      body = '<div class="predict-locked">🔒 ' + status.text +
+        '<div class="predict-picks">' + (picks || 'No predictions made') + '</div></div>';
+    } else if (!currentPlayer) {
+      body = '<div class="predict-locked">Pick a player above to predict this match</div>';
+    } else {
+      const mine = preds[currentPlayer] || {};
+      body = '<div class="predict-inputs">' +
+        '<input type="number" min="0" max="20" class="predict-input" id="pi-home-' + event.id + '" value="' + (mine.home ?? '') + '">' +
+        '<span>–</span>' +
+        '<input type="number" min="0" max="20" class="predict-input" id="pi-away-' + event.id + '" value="' + (mine.away ?? '') + '">' +
+        '<button class="predict-save" onclick="savePrediction(\'' + event.id + '\')">Save</button>' +
+        '<span class="predict-saved" id="ps-' + event.id + '"></span>' +
+      '</div>';
+    }
+
+    return '<div class="predict-card">' +
+      '<div class="match-teams">' +
+        '<div class="match-team home">' + teamHtml(home) + '</div>' +
+        '<div class="match-score">vs</div>' +
+        '<div class="match-team away">' + teamHtml(away) + '</div>' +
+      '</div>' +
+      '<div class="match-status">' + status.text + '</div>' +
+      body +
+    '</div>';
+  }).join('');
+}
+
+function savePrediction(eventId) {
+  if (!firebaseReady || !currentPlayer) return;
+  const homeEl = document.getElementById('pi-home-' + eventId);
+  const awayEl = document.getElementById('pi-away-' + eventId);
+  const home = parseInt(homeEl.value, 10), away = parseInt(awayEl.value, 10);
+  if (isNaN(home) || isNaN(away) || home < 0 || away < 0) return;
+  predictionsRef.child(eventId).child(currentPlayer).set({ home, away });
+  const saved = document.getElementById('ps-' + eventId);
+  if (saved) {
+    saved.textContent = '✓ Saved';
+    setTimeout(() => { if (saved) saved.textContent = ''; }, 2000);
+  }
+}
+
+function renderBanter() {
+  const el = document.getElementById('banterFeed');
+  if (!el) return;
+  if (!firebaseReady) {
+    el.innerHTML = '<div class="predict-config-msg">Banter backend not configured yet — see setup instructions to enable shared banter.</div>';
+    return;
+  }
+
+  const feedHtml = banterMessages.length
+    ? banterMessages.map(m => {
+        const cfg = PLAYER_CFG[m.player] || {};
+        return '<div class="banter-msg"><div class="banter-meta"><b class="' + (cfg.c || '') + '">' + m.player + '</b> · ' +
+          new Date(m.ts).toLocaleString([], { weekday: 'short', hour: '2-digit', minute: '2-digit' }) + '</div>' +
+          escapeHtml(m.text) + '</div>';
+      }).join('')
+    : '<div class="empty-box">No banter yet — say something!</div>';
+
+  const inputHtml = currentPlayer
+    ? '<div class="banter-input-row">' +
+        '<input class="banter-input" id="banterInput" placeholder="Say something..." maxlength="200" onkeydown="if(event.key===\'Enter\') sendBanter()">' +
+        '<button class="banter-send" onclick="sendBanter()">Send</button>' +
+      '</div>'
+    : '<div class="predict-config-msg">Pick a player above to join the banter</div>';
+
+  el.innerHTML = '<div class="banter-feed">' + feedHtml + '</div>' + inputHtml;
+}
+
+function sendBanter() {
+  if (!firebaseReady || !currentPlayer) return;
+  const input = document.getElementById('banterInput');
+  const text = input.value.trim();
+  if (!text) return;
+  banterRef.push({ player: currentPlayer, text, ts: Date.now() });
+  input.value = '';
+}
+
+if (firebaseReady) {
+  predictionsRef.on('value', snap => {
+    predictionsData = snap.val() || {};
+    renderPredictionsLeaderboard();
+  });
+  banterRef.limitToLast(30).on('value', snap => {
+    const val = snap.val() || {};
+    banterMessages = Object.values(val).sort((a, b) => a.ts - b.ts);
+    renderBanter();
+  });
+}
+
+renderPredictPicker();
+renderPredictionsLeaderboard();
+renderBanter();
 </script>
 </body>
 </html>
