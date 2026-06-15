@@ -7,13 +7,38 @@
   <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-database-compat.js"></script>
   <style>
-    :root { color-scheme: light; }
+    :root {
+      color-scheme: light;
+      --bg: #f0f2ff;
+      --text: #1a1a2e;
+      --card-bg: #ffffff;
+      --card-shadow: rgba(0,0,0,.07);
+      --card-shadow-sm: rgba(0,0,0,.06);
+      --muted: #aaa;
+      --muted-2: #888;
+      --border: #ddd;
+      --border-light: #eee;
+      --row-alt: #f6f7ff;
+    }
+    [data-theme="dark"] {
+      color-scheme: dark;
+      --bg: #14151f;
+      --text: #e8e8f2;
+      --card-bg: #1e2030;
+      --card-shadow: rgba(0,0,0,.5);
+      --card-shadow-sm: rgba(0,0,0,.4);
+      --muted: #8a8da0;
+      --muted-2: #9799ab;
+      --border: #3a3d52;
+      --border-light: #2c2f42;
+      --row-alt: #272a3d;
+    }
     * { box-sizing: border-box; margin: 0; padding: 0; }
-    body { font-family: system-ui, -apple-system, sans-serif; background: #f0f2ff; color: #1a1a2e; }
+    body { font-family: system-ui, -apple-system, sans-serif; background: var(--bg); color: var(--text); transition: background .2s, color .2s; }
 
     .header {
       background: linear-gradient(135deg, #1a1a2e 0%, #16213e 60%, #0f3460 100%);
-      color: white; padding: 28px 20px; text-align: center;
+      color: white; padding: 28px 20px; text-align: center; position: relative;
     }
     .header h1 { font-size: 26px; font-weight: 900; letter-spacing: -0.5px; }
     .header h1 span { color: #f5a623; }
@@ -25,11 +50,18 @@
       cursor: pointer; transition: background .2s;
     }
     .refresh-btn:hover { background: rgba(255,255,255,0.25); }
+    .theme-toggle {
+      position: absolute; top: 16px; right: 16px;
+      background: rgba(255,255,255,0.15); border: 1px solid rgba(255,255,255,0.3);
+      color: white; border-radius: 8px; width: 34px; height: 34px; font-size: 16px;
+      cursor: pointer; transition: background .2s;
+    }
+    .theme-toggle:hover { background: rgba(255,255,255,0.25); }
 
     .container { max-width: 920px; margin: 0 auto; padding: 24px 16px 48px; }
 
     /* Podium */
-    .podium-caption { text-align: center; font-size: 11px; color: #aaa; margin-bottom: 10px; }
+    .podium-caption { text-align: center; font-size: 11px; color: var(--muted); margin-bottom: 10px; }
     .podium-wrap { display: flex; justify-content: center; align-items: flex-end; gap: 12px; margin-bottom: 32px; }
     .podium-item { text-align: center; flex: 1; max-width: 180px; }
     .podium-avatar {
@@ -41,7 +73,7 @@
     .podium-avatar img { width: 100%; height: 100%; object-fit: cover; }
     .podium-name { font-weight: 800; font-size: 17px; }
     .podium-points { font-size: 32px; font-weight: 900; line-height: 1; }
-    .podium-pts-label { font-size: 11px; color: #888; margin-top: 2px; }
+    .podium-pts-label { font-size: 11px; color: var(--muted-2); margin-top: 2px; }
     .podium-block { border-radius: 10px 10px 0 0; margin-top: 10px; display: flex; align-items: center; justify-content: center; font-size: 28px; }
     .rank-1 .podium-avatar { background: linear-gradient(135deg, #f7b733, #fc4a1a); box-shadow: 0 4px 16px rgba(247,183,51,.45); }
     .rank-1 .podium-block  { background: linear-gradient(135deg, #f7b733, #fc4a1a); height: 100px; }
@@ -54,45 +86,45 @@
     .rank-3 .podium-points { color: #7a4f2e; }
 
     /* Prizes */
-    .section-title { font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: 1px; color: #aaa; margin-bottom: 12px; }
+    .section-title { font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: 1px; color: var(--muted); margin-bottom: 12px; }
     .prizes { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 12px; }
-    .prize-card { background: white; border-radius: 12px; padding: 16px 12px; text-align: center; box-shadow: 0 2px 8px rgba(0,0,0,.07); }
+    .prize-card { background: var(--card-bg); border-radius: 12px; padding: 16px 12px; text-align: center; box-shadow: 0 2px 8px var(--card-shadow); }
     .prize-emoji { font-size: 26px; }
     .prize-place { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .3px; margin-top: 6px; }
     .prize-name  { font-size: 13px; font-weight: 800; margin-top: 4px; }
 
     /* Side bets */
     .side-bets { display: flex; flex-direction: column; gap: 8px; margin-bottom: 28px; }
-    .side-bet { background: white; border-radius: 10px; padding: 10px 14px; font-size: 13px; box-shadow: 0 2px 8px rgba(0,0,0,.07); }
+    .side-bet { background: var(--card-bg); border-radius: 10px; padding: 10px 14px; font-size: 13px; box-shadow: 0 2px 8px var(--card-shadow); }
 
     /* Live scores */
     .matches-list { display: flex; flex-direction: column; gap: 8px; margin-bottom: 28px; }
-    .match-card { background: white; border-radius: 10px; padding: 10px 14px; box-shadow: 0 2px 8px rgba(0,0,0,.07); }
+    .match-card { background: var(--card-bg); border-radius: 10px; padding: 10px 14px; box-shadow: 0 2px 8px var(--card-shadow); }
     .match-teams { display: flex; align-items: center; justify-content: space-between; gap: 8px; font-size: 13px; }
     .match-team { display: flex; align-items: center; gap: 6px; flex: 1; min-width: 0; }
     .match-team.away { justify-content: flex-end; text-align: right; }
     .match-team span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .match-score { font-weight: 800; font-size: 15px; min-width: 46px; text-align: center; flex-shrink: 0; }
-    .match-status { font-size: 11px; color: #aaa; text-align: center; margin-top: 6px; }
+    .match-status { font-size: 11px; color: var(--muted); text-align: center; margin-top: 6px; }
     .match-status.live { color: #e94560; font-weight: 700; }
-    .match-odds { display: flex; justify-content: center; gap: 14px; font-size: 11px; color: #888; margin-top: 6px; padding-top: 6px; border-top: 1px solid #eee; }
-    .match-odds span b { color: #555; }
+    .match-odds { display: flex; justify-content: center; gap: 14px; font-size: 11px; color: var(--muted-2); margin-top: 6px; padding-top: 6px; border-top: 1px solid var(--border-light); }
+    .match-odds span b { color: var(--text); }
 
     /* Match sub-tabs (Today / Upcoming / Completed) */
     .subtabs { display: flex; gap: 8px; margin-bottom: 10px; }
-    .subtab { padding: 6px 14px; border-radius: 8px; font-size: 12px; font-weight: 700; background: white; color: #888; cursor: pointer; box-shadow: 0 1px 4px rgba(0,0,0,.06); user-select: none; }
+    .subtab { padding: 6px 14px; border-radius: 8px; font-size: 12px; font-weight: 700; background: var(--card-bg); color: var(--muted-2); cursor: pointer; box-shadow: 0 1px 4px var(--card-shadow-sm); user-select: none; }
     .subtab.active { background: linear-gradient(135deg, #667eea, #764ba2); color: white; }
     .match-tab-content { display: none; }
     .match-tab-content.active { display: block; }
-    .empty-box { text-align: center; padding: 20px; color: #aaa; font-size: 13px; background: white; border-radius: 10px; margin-bottom: 28px; }
+    .empty-box { text-align: center; padding: 20px; color: var(--muted); font-size: 13px; background: var(--card-bg); border-radius: 10px; margin-bottom: 28px; }
 
     /* Knockout tracker */
     .knockout-round { margin-bottom: 16px; }
-    .knockout-round-title { font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: .5px; color: #aaa; margin-bottom: 8px; }
-    .knockout-match { background: white; border-radius: 10px; padding: 10px 14px; margin-bottom: 6px; font-size: 13px; box-shadow: 0 1px 4px rgba(0,0,0,.06); display: flex; align-items: center; flex-wrap: wrap; gap: 6px; }
-    .knockout-match .tbd { color: #bbb; font-style: italic; }
+    .knockout-round-title { font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: .5px; color: var(--muted); margin-bottom: 8px; }
+    .knockout-match { background: var(--card-bg); border-radius: 10px; padding: 10px 14px; margin-bottom: 6px; font-size: 13px; box-shadow: 0 1px 4px var(--card-shadow-sm); display: flex; align-items: center; flex-wrap: wrap; gap: 6px; }
+    .knockout-match .tbd { color: var(--muted); font-style: italic; }
     .knockout-score { font-weight: 800; }
-    .knockout-status { margin-left: auto; font-size: 11px; color: #aaa; }
+    .knockout-status { margin-left: auto; font-size: 11px; color: var(--muted); }
 
     /* Owner badge */
     .owner-badge { display: inline-flex; align-items: center; justify-content: center; width: 18px; height: 18px; border-radius: 50%; font-size: 9px; font-weight: 800; color: white; flex-shrink: 0; overflow: hidden; }
@@ -101,18 +133,18 @@
 
     /* Team cards */
     .teams-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 16px; margin-bottom: 28px; }
-    .player-card { background: white; border-radius: 14px; overflow: hidden; box-shadow: 0 2px 10px rgba(0,0,0,.08); }
+    .player-card { background: var(--card-bg); border-radius: 14px; overflow: hidden; box-shadow: 0 2px 10px var(--card-shadow); }
     .player-header { padding: 14px 18px; display: flex; align-items: center; gap: 12px; }
     .player-icon { width: 42px; height: 42px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 17px; font-weight: 900; color: white; flex-shrink: 0; overflow: hidden; }
     .player-icon img { width: 100%; height: 100%; object-fit: cover; }
     .player-info h3 { font-weight: 800; font-size: 15px; }
-    .player-total { font-size: 12px; color: #888; margin-top: 2px; }
+    .player-total { font-size: 12px; color: var(--muted-2); margin-top: 2px; }
     .teams-list { padding: 0 10px 10px; }
     .team-row { display: flex; align-items: center; padding: 6px 8px; border-radius: 7px; font-size: 13px; }
-    .team-row:nth-child(odd) { background: #f6f7ff; }
+    .team-row:nth-child(odd) { background: var(--row-alt); }
     .team-flag { width: 22px; height: 16px; object-fit: cover; border-radius: 2px; margin-right: 8px; flex-shrink: 0; }
     .team-name   { flex: 1; }
-    .team-record { font-size: 11px; color: #aaa; margin-right: 8px; white-space: nowrap; }
+    .team-record { font-size: 11px; color: var(--muted); margin-right: 8px; white-space: nowrap; }
     .team-pts    { font-weight: 800; min-width: 24px; text-align: right; }
 
     .bg-joel    { background: linear-gradient(135deg, #667eea, #764ba2); }
@@ -125,7 +157,7 @@
     .border-josh    { border-top: 3px solid #f5576c; }
     .border-eleanor { border-top: 3px solid #11c98e; }
 
-    .loading   { text-align: center; padding: 60px; color: #888; font-size: 15px; }
+    .loading   { text-align: center; padding: 60px; color: var(--muted-2); font-size: 15px; }
     .error-box { background: #fff0f0; border: 1px solid #ffcccc; border-radius: 10px; padding: 14px; color: #c00; margin: 12px 0; font-size: 13px; }
     .warn-box  { background: #fffbe6; border: 1px solid #ffe58f; border-radius: 10px; padding: 12px; color: #856404; margin: 12px 0; font-size: 12px; }
 
@@ -140,7 +172,7 @@
 
     /* Tabs */
     .tabs { display: flex; gap: 8px; max-width: 900px; margin: 0 auto 16px; padding: 0 16px; }
-    .tab { flex: 1; text-align: center; padding: 10px 12px; border-radius: 10px; font-weight: 800; font-size: 13px; background: white; color: #888; cursor: pointer; box-shadow: 0 2px 8px rgba(0,0,0,.06); user-select: none; transition: background .15s, color .15s; }
+    .tab { flex: 1; text-align: center; padding: 10px 12px; border-radius: 10px; font-weight: 800; font-size: 13px; background: var(--card-bg); color: var(--muted-2); cursor: pointer; box-shadow: 0 2px 8px var(--card-shadow-sm); user-select: none; transition: background .15s, color .15s; }
     .tab.active { background: linear-gradient(135deg, #667eea, #764ba2); color: white; }
     .tab-content { display: none; }
     .tab-content.active { display: block; }
@@ -148,13 +180,13 @@
     /* Keepy Uppy game */
     .game-wrap { max-width: 480px; margin: 0 auto; text-align: center; padding: 0 16px 24px; }
     .game-stats { display: flex; justify-content: center; gap: 32px; margin-bottom: 12px; }
-    .game-stats .stat-label { display: block; font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: 1px; color: #aaa; }
-    .game-stats .stat-value { font-size: 26px; font-weight: 800; color: #333; }
+    .game-stats .stat-label { display: block; font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: 1px; color: var(--muted); }
+    .game-stats .stat-value { font-size: 26px; font-weight: 800; color: var(--text); }
     .game-field { position: relative; height: 60vh; max-height: 520px; min-height: 320px; border-radius: 16px; overflow: hidden; background: repeating-linear-gradient(180deg, #5fb86b 0, #5fb86b 40px, #54aa60 40px, #54aa60 80px); box-shadow: 0 4px 16px rgba(0,0,0,.15); touch-action: none; }
     .game-ball { position: absolute; width: 50px; height: 50px; font-size: 40px; line-height: 50px; text-align: center; user-select: none; will-change: transform; }
     .game-overlay { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; background: rgba(0,0,0,.5); color: white; font-weight: 800; text-align: center; padding: 20px; }
-    .game-overlay button { padding: 10px 24px; border-radius: 10px; border: none; background: white; color: #333; font-weight: 800; font-size: 14px; cursor: pointer; }
-    .game-hint { margin-top: 10px; font-size: 12px; color: #aaa; }
+    .game-overlay button { padding: 10px 24px; border-radius: 10px; border: none; background: var(--card-bg); color: var(--text); font-weight: 800; font-size: 14px; cursor: pointer; }
+    .game-hint { margin-top: 10px; font-size: 12px; color: var(--muted); }
 
     /* Hydration Break game */
     .hydro-field { background: linear-gradient(180deg, #e0f7fa, #b3e5fc); display: flex; align-items: center; justify-content: center; }
@@ -170,17 +202,17 @@
     /* Sudoku game */
     .sudoku-wrap { max-width: 420px; margin: 0 auto; text-align: center; padding: 0 16px 24px; }
     .sudoku-diffs { display: flex; gap: 8px; margin-bottom: 12px; }
-    .sudoku-diff { flex: 1; padding: 8px 6px; border-radius: 8px; font-size: 12px; font-weight: 800; background: white; color: #888; cursor: pointer; box-shadow: 0 1px 4px rgba(0,0,0,.06); user-select: none; }
+    .sudoku-diff { flex: 1; padding: 8px 6px; border-radius: 8px; font-size: 12px; font-weight: 800; background: var(--card-bg); color: var(--muted-2); cursor: pointer; box-shadow: 0 1px 4px var(--card-shadow-sm); user-select: none; }
     .sudoku-diff.active { background: linear-gradient(135deg, #5fb86b, #2e7d32); color: white; }
     .sudoku-board { display: grid; grid-template-columns: repeat(9, 1fr); background: #2e7d32; border: 3px solid #2e7d32; border-radius: 10px; overflow: hidden; aspect-ratio: 1; max-width: 360px; margin: 0 auto 14px; box-shadow: 0 4px 16px rgba(0,0,0,.15); }
-    .sudoku-cell { background: white; display: flex; align-items: center; justify-content: center; font-size: 18px; font-weight: 700; cursor: pointer; user-select: none; color: #333; border: 1px solid #e3f0e4; }
+    .sudoku-cell { background: var(--card-bg); display: flex; align-items: center; justify-content: center; font-size: 18px; font-weight: 700; cursor: pointer; user-select: none; color: var(--text); border: 1px solid var(--border-light); }
     .sudoku-cell.given { color: #2e7d32; font-weight: 800; cursor: default; background: #f1f8f0; }
     .sudoku-cell.selected { background: #fff3c4; }
     .sudoku-cell.error { color: #e94560; }
     .sudoku-cell.br3 { border-right: 2px solid #2e7d32; }
     .sudoku-cell.bb3 { border-bottom: 2px solid #2e7d32; }
     .sudoku-numpad { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; max-width: 360px; margin: 0 auto; }
-    .sudoku-num { padding: 12px 0; border-radius: 8px; background: white; font-size: 18px; font-weight: 800; box-shadow: 0 1px 4px rgba(0,0,0,.06); cursor: pointer; color: #333; user-select: none; }
+    .sudoku-num { padding: 12px 0; border-radius: 8px; background: var(--card-bg); font-size: 18px; font-weight: 800; box-shadow: 0 1px 4px var(--card-shadow-sm); cursor: pointer; color: var(--text); user-select: none; }
     .sudoku-num.erase { color: #e94560; font-size: 16px; }
     .sudoku-win { font-size: 13px; font-weight: 800; color: #2e7d32; margin-bottom: 10px; }
 
@@ -191,65 +223,71 @@
     .kickoff-banner .owner-badge, .kickoff-banner .owner-name { vertical-align: middle; }
 
     /* Venue info */
-    .match-venue { font-size: 10px; color: #bbb; text-align: center; margin-top: 4px; }
+    .match-venue { font-size: 10px; color: var(--muted); text-align: center; margin-top: 4px; }
 
     /* Golden Boot */
     .goldenboot-list { display: flex; flex-direction: column; gap: 6px; margin-bottom: 28px; }
-    .goldenboot-row { display: flex; align-items: center; gap: 10px; background: white; border-radius: 10px; padding: 8px 14px; font-size: 13px; box-shadow: 0 1px 4px rgba(0,0,0,.06); }
-    .goldenboot-rank { font-weight: 900; color: #aaa; width: 22px; flex-shrink: 0; }
+    .goldenboot-row { display: flex; align-items: center; gap: 10px; background: var(--card-bg); border-radius: 10px; padding: 8px 14px; font-size: 13px; box-shadow: 0 1px 4px var(--card-shadow-sm); }
+    .goldenboot-rank { font-weight: 900; color: var(--muted); width: 22px; flex-shrink: 0; }
     .goldenboot-player { flex: 1; font-weight: 700; }
-    .goldenboot-team { font-size: 11px; color: #aaa; margin-right: 8px; }
+    .goldenboot-team { font-size: 11px; color: var(--muted); margin-right: 8px; }
     .goldenboot-goals { font-weight: 800; }
 
     /* Predictions tab */
     .predict-wrap { max-width: 560px; margin: 0 auto; padding: 0 16px 28px; }
     .predict-picker { display: flex; gap: 8px; margin-bottom: 16px; }
-    .predict-picker-btn { flex: 1; padding: 12px; border-radius: 10px; font-weight: 800; font-size: 13px; background: white; color: #888; cursor: pointer; box-shadow: 0 1px 4px rgba(0,0,0,.06); text-align: center; user-select: none; }
-    .predict-picker-btn.taken { cursor: not-allowed; opacity: .5; }
-    .predict-taken-tag { font-weight: 600; font-size: 10px; color: #c00; }
-    .predict-current { font-size: 12px; color: #888; margin-bottom: 16px; text-align: center; }
+    .predict-picker-btn { flex: 1; padding: 12px; border-radius: 10px; font-weight: 800; font-size: 13px; background: var(--card-bg); color: var(--muted-2); cursor: pointer; box-shadow: 0 1px 4px var(--card-shadow-sm); text-align: center; user-select: none; }
+    .predict-current { font-size: 12px; color: var(--muted-2); margin-bottom: 16px; text-align: center; }
     .predict-current a { color: #667eea; font-weight: 700; cursor: pointer; }
     .predict-leaderboard { display: flex; flex-direction: column; gap: 6px; margin-bottom: 20px; }
-    .predict-lb-row { display: flex; align-items: center; gap: 10px; background: white; border-radius: 10px; padding: 10px 14px; font-size: 13px; box-shadow: 0 1px 4px rgba(0,0,0,.06); }
+    .predict-lb-row { display: flex; align-items: center; gap: 10px; background: var(--card-bg); border-radius: 10px; padding: 10px 14px; font-size: 13px; box-shadow: 0 1px 4px var(--card-shadow-sm); }
     .predict-lb-rank { font-size: 16px; width: 22px; flex-shrink: 0; }
     .predict-lb-name { flex: 1; font-weight: 800; }
-    .predict-lb-count { font-size: 11px; color: #aaa; margin-right: 8px; }
+    .predict-lb-count { font-size: 11px; color: var(--muted); margin-right: 8px; }
     .predict-lb-pts { font-weight: 900; font-size: 15px; }
-    .predict-card { background: white; border-radius: 10px; padding: 10px 14px; box-shadow: 0 2px 8px rgba(0,0,0,.07); margin-bottom: 8px; }
+    .predict-card { background: var(--card-bg); border-radius: 10px; padding: 10px 14px; box-shadow: 0 2px 8px var(--card-shadow); margin-bottom: 8px; }
     .predict-card .match-teams { margin-bottom: 8px; }
     .predict-inputs { display: flex; align-items: center; justify-content: center; gap: 10px; }
-    .predict-input { width: 44px; height: 36px; text-align: center; font-size: 16px; font-weight: 800; border: 1px solid #ddd; border-radius: 8px; }
+    .predict-input { width: 44px; height: 36px; text-align: center; font-size: 16px; font-weight: 800; border: 1px solid var(--border); border-radius: 8px; background: var(--card-bg); color: var(--text); }
     .predict-save { padding: 8px 16px; border-radius: 8px; border: none; background: linear-gradient(135deg, #667eea, #764ba2); color: white; font-weight: 800; font-size: 12px; cursor: pointer; }
     .predict-saved { font-size: 11px; color: #2e7d32; font-weight: 700; margin-left: 6px; }
-    .predict-locked { text-align: center; font-size: 12px; color: #aaa; }
-    .predict-locked .predict-picks { margin-top: 4px; font-size: 12px; color: #555; }
-    .predict-config-msg { text-align: center; padding: 16px; color: #aaa; font-size: 12px; background: white; border-radius: 10px; margin-bottom: 16px; }
+    .predict-locked { text-align: center; font-size: 12px; color: var(--muted); }
+    .predict-locked .predict-picks { margin-top: 4px; font-size: 12px; color: var(--muted-2); }
+    .predict-config-msg { text-align: center; padding: 16px; color: var(--muted); font-size: 12px; background: var(--card-bg); border-radius: 10px; margin-bottom: 16px; }
 
     /* Banter feed */
     .banter-wrap { margin-bottom: 24px; }
     .banter-feed { display: flex; flex-direction: column; gap: 6px; max-height: 260px; overflow-y: auto; margin-bottom: 8px; padding: 4px; }
-    .banter-msg { background: white; border-radius: 10px; padding: 8px 12px; font-size: 13px; box-shadow: 0 1px 4px rgba(0,0,0,.06); }
-    .banter-msg .banter-meta { font-size: 10px; color: #aaa; margin-bottom: 2px; }
+    .banter-msg { background: var(--card-bg); border-radius: 10px; padding: 8px 12px; font-size: 13px; box-shadow: 0 1px 4px var(--card-shadow-sm); }
+    .banter-msg .banter-meta { font-size: 10px; color: var(--muted); margin-bottom: 2px; }
     .banter-msg .banter-meta b { font-weight: 800; }
     .banter-input-row { display: flex; gap: 8px; }
-    .banter-input { flex: 1; padding: 10px 12px; border: 1px solid #ddd; border-radius: 8px; font-size: 13px; }
+    .banter-input { flex: 1; padding: 10px 12px; border: 1px solid var(--border); border-radius: 8px; font-size: 13px; background: var(--card-bg); color: var(--text); }
     .banter-send { padding: 10px 18px; border-radius: 8px; border: none; background: linear-gradient(135deg, #667eea, #764ba2); color: white; font-weight: 800; font-size: 12px; cursor: pointer; }
 
     /* Knockout bracket */
     .bracket-scroll { overflow-x: auto; padding-bottom: 8px; margin-bottom: 16px; }
     .bracket-row { display: flex; gap: 24px; min-width: max-content; padding: 4px; }
     .bracket-col { display: flex; flex-direction: column; justify-content: space-around; gap: 12px; min-width: 170px; }
-    .bracket-col-title { font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: .5px; color: #aaa; text-align: center; margin-bottom: 4px; }
-    .bracket-match { background: white; border-radius: 8px; padding: 8px 10px; font-size: 11px; box-shadow: 0 1px 4px rgba(0,0,0,.06); border-left: 3px solid #667eea; }
+    .bracket-col-title { font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: .5px; color: var(--muted); text-align: center; margin-bottom: 4px; }
+    .bracket-match { background: var(--card-bg); border-radius: 8px; padding: 8px 10px; font-size: 11px; box-shadow: 0 1px 4px var(--card-shadow-sm); border-left: 3px solid #667eea; }
     .bracket-team { display: flex; align-items: center; gap: 4px; justify-content: space-between; padding: 2px 0; }
-    .bracket-team .tbd { color: #ccc; font-style: italic; }
+    .bracket-team .tbd { color: var(--muted); font-style: italic; }
     .bracket-score { font-weight: 800; }
-    .bracket-status { font-size: 9px; color: #bbb; text-align: center; margin-top: 4px; }
+    .bracket-status { font-size: 9px; color: var(--muted); text-align: center; margin-top: 4px; }
   </style>
+  <script>
+    (function() {
+      const saved = localStorage.getItem('swTheme');
+      const theme = saved || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+      if (theme === 'dark') document.documentElement.setAttribute('data-theme', 'dark');
+    })();
+  </script>
 </head>
 <body>
 
 <div class="header">
+  <button class="theme-toggle" id="themeToggle" onclick="toggleTheme()">🌙</button>
   <h1>⚽ World Cup <span>2026</span> Sweepstakes</h1>
   <div class="subtitle">Joel · Josh · Eleanor &nbsp;|&nbsp; Group Stage Tracker</div>
   <div class="meta">
@@ -356,6 +394,24 @@
 <div class="football-toy" id="footballToy" title="Throw me!" aria-hidden="true">⚽</div>
 
 <script>
+// ── Dark mode ────────────────────────────────────────────────────────
+function updateThemeToggleIcon() {
+  document.getElementById('themeToggle').textContent =
+    document.documentElement.getAttribute('data-theme') === 'dark' ? '☀️' : '🌙';
+}
+function toggleTheme() {
+  const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+  if (isDark) {
+    document.documentElement.removeAttribute('data-theme');
+    localStorage.setItem('swTheme', 'light');
+  } else {
+    document.documentElement.setAttribute('data-theme', 'dark');
+    localStorage.setItem('swTheme', 'dark');
+  }
+  updateThemeToggleIcon();
+}
+updateThemeToggleIcon();
+
 // ── Firebase (shared predictions + banter) ─────────────────────────────
 // To enable: create a free project at https://console.firebase.google.com,
 // add a Web App, enable Realtime Database, then paste your config below.
@@ -365,29 +421,18 @@ const firebaseConfig = {
   projectId: "sweepstake-48153",
 };
 
-let predictionsRef = null, banterRef = null, claimsRef = null, firebaseReady = false;
+let predictionsRef = null, banterRef = null, firebaseReady = false;
 try {
   if (firebaseConfig.apiKey !== "YOUR_API_KEY") {
     firebase.initializeApp(firebaseConfig);
     const db = firebase.database();
     predictionsRef = db.ref('predictions');
     banterRef = db.ref('banter');
-    claimsRef = db.ref('claims');
     firebaseReady = true;
   }
 } catch (e) {
   console.warn('Firebase not configured:', e);
 }
-
-// Per-device ID so each player name can only be "active" on one device at a time.
-const DEVICE_ID = (() => {
-  let id = localStorage.getItem('swDeviceId');
-  if (!id) {
-    id = 'dev_' + Date.now().toString(36) + Math.random().toString(36).slice(2);
-    localStorage.setItem('swDeviceId', id);
-  }
-  return id;
-})();
 
 // ── Owner map ────────────────────────────────────────────────────────
 const OWNER_MAP = {};
@@ -569,6 +614,7 @@ const ALL_DATES = '20260611-20260719';
 // ── Parse ────────────────────────────────────────────────────────────
 function parseStandings(data) {
   const totals    = { Joel: 0, Josh: 0, Eleanor: 0 };
+  const gds       = { Joel: 0, Josh: 0, Eleanor: 0 };
   const teams     = { Joel: [], Josh: [], Eleanor: [] };
   const unmatched = [];
 
@@ -579,17 +625,19 @@ function parseStandings(data) {
       const stats = {};
       for (const s of (entry.stats || [])) stats[s.name] = s.value;
 
-      const pts  = stats.points       || 0;
-      const wins = stats.wins         || 0;
-      const drws = stats.ties         || 0;
-      const loss = stats.losses       || 0;
-      const gp   = stats.gamesPlayed  || 0;
+      const pts  = stats.points           || 0;
+      const wins = stats.wins             || 0;
+      const drws = stats.ties             || 0;
+      const loss = stats.losses           || 0;
+      const gp   = stats.gamesPlayed      || 0;
+      const gd   = stats.pointDifferential || 0;
       const rec  = gp > 0 ? wins + 'W ' + drws + 'D ' + loss + 'L' : '—';
 
       const owner = findOwner(name);
       if (owner) {
         totals[owner] += pts;
-        teams[owner].push({ name, flag, pts, rec });
+        gds[owner] += gd;
+        teams[owner].push({ name, flag, pts, rec, gd });
       } else {
         unmatched.push(name);
       }
@@ -597,10 +645,10 @@ function parseStandings(data) {
   }
 
   const ranked = Object.entries(totals)
-    .sort((a, b) => b[1] - a[1])
-    .map(([n, pts], i) => ({ name: n, pts, rank: i + 1 }));
+    .sort((a, b) => b[1] - a[1] || gds[b[0]] - gds[a[0]])
+    .map(([n, pts], i) => ({ name: n, pts, gd: gds[n], rank: i + 1 }));
 
-  return { totals, teams, ranked, unmatched };
+  return { totals, gds, teams, ranked, unmatched };
 }
 
 function getRound(dateStr) {
@@ -649,13 +697,13 @@ function ownerDepths(owner, teams, teamDepth) {
     .sort((a, b) => b - a);
 }
 
-function compareOwners(a, b, teams, teamDepth, totals) {
+function compareOwners(a, b, teams, teamDepth, totals, gds) {
   const da = ownerDepths(a, teams, teamDepth);
   const db = ownerDepths(b, teams, teamDepth);
   for (let i = 0; i < da.length; i++) {
     if (da[i] !== db[i]) return db[i] - da[i];
   }
-  return totals[b] - totals[a];
+  return (totals[b] - totals[a]) || (gds[b] - gds[a]);
 }
 
 // ── Render helpers ───────────────────────────────────────────────────
@@ -870,7 +918,7 @@ function renderTeams(ranked, teams) {
           '<div class="player-icon ' + cfg.bg + '">' + avatarHtml(cfg, p.name) + '</div>' +
           '<div class="player-info">' +
             '<h3>' + p.name + ' ' + badge + '</h3>' +
-            '<div class="player-total ' + cfg.c + '">' + p.pts + ' pts · ' + list.length + ' teams</div>' +
+            '<div class="player-total ' + cfg.c + '">' + p.pts + ' pts (GD ' + (p.gd > 0 ? '+' : '') + p.gd + ') · ' + list.length + ' teams</div>' +
           '</div>' +
         '</div>' +
         '<div class="teams-list">' +
@@ -907,7 +955,7 @@ async function render() {
     return;
   }
 
-  const { totals, teams, ranked, unmatched } = parseStandings(standingsResult.value);
+  const { totals, gds, teams, ranked, unmatched } = parseStandings(standingsResult.value);
 
   let teamDepth = {}, matchesByRound = {};
   if (knockoutResult.status === 'fulfilled') {
@@ -916,7 +964,7 @@ async function render() {
 
   const knockoutStarted = Object.values(teamDepth).some(d => d > 0);
   const knockoutRanked = Object.keys(totals)
-    .sort((a, b) => compareOwners(a, b, teams, teamDepth, totals))
+    .sort((a, b) => compareOwners(a, b, teams, teamDepth, totals, gds))
     .map((name, i) => ({ name, pts: totals[name], rank: i + 1 }));
 
   const todayEvents = liveResult.status === 'fulfilled' ? (liveResult.value.events || []) : [];
@@ -1414,10 +1462,14 @@ function initFlappy() {
 
   function draw() {
     ctx.clearRect(0, 0, fw, fh);
-    ctx.fillStyle = '#2e7d32';
+    ctx.fillStyle = '#fff';
+    ctx.strokeStyle = '#cfd8dc';
+    ctx.lineWidth = 3;
     pipes.forEach(p => {
       ctx.fillRect(p.x, 0, PIPE_W, p.gapY);
+      ctx.strokeRect(p.x, 0, PIPE_W, p.gapY);
       ctx.fillRect(p.x, p.gapY + PIPE_GAP, PIPE_W, fh - (p.gapY + PIPE_GAP));
+      ctx.strokeRect(p.x, p.gapY + PIPE_GAP, PIPE_W, fh - (p.gapY + PIPE_GAP));
     });
     ctx.font = (BALL_R * 2) + 'px serif';
     ctx.textAlign = 'center';
@@ -1725,7 +1777,7 @@ function tickKickoffCountdown() {
 setInterval(tickKickoffCountdown, 1000);
 
 // ── Predictions + leaderboard + banter (Firebase) ───────────────────
-let latestUpcoming = [], latestCompleted = [], predictionsData = {}, banterMessages = [], claimsData = {};
+let latestUpcoming = [], latestCompleted = [], predictionsData = {}, banterMessages = [];
 let currentPlayer = localStorage.getItem('swPlayer');
 
 function escapeHtml(s) {
@@ -1733,16 +1785,6 @@ function escapeHtml(s) {
 }
 
 function setPlayer(name) {
-  if (name) {
-    const claimedBy = claimsData[name];
-    if (claimedBy && claimedBy !== DEVICE_ID) {
-      alert(name + ' is already being used on another device.');
-      return;
-    }
-    if (firebaseReady) claimsRef.child(name).set(DEVICE_ID);
-  } else if (currentPlayer && firebaseReady && claimsData[currentPlayer] === DEVICE_ID) {
-    claimsRef.child(currentPlayer).remove();
-  }
   currentPlayer = name;
   if (name) localStorage.setItem('swPlayer', name);
   else localStorage.removeItem('swPlayer');
@@ -1758,12 +1800,9 @@ function renderPredictPicker() {
     el.innerHTML = '<div class="predict-current">Predicting as <strong>' + currentPlayer + '</strong> — <a onclick="setPlayer(null)">change</a></div>';
   } else {
     el.innerHTML = '<div class="predict-picker">' +
-      Object.keys(PLAYER_CFG).map(name => {
-        const taken = claimsData[name] && claimsData[name] !== DEVICE_ID;
-        return taken
-          ? '<div class="predict-picker-btn taken">' + name + ' <span class="predict-taken-tag">in use</span></div>'
-          : '<div class="predict-picker-btn" onclick="setPlayer(\'' + name + '\')">' + name + '</div>';
-      }).join('') + '</div>';
+      Object.keys(PLAYER_CFG).map(name =>
+        '<div class="predict-picker-btn" onclick="setPlayer(\'' + name + '\')">' + name + '</div>'
+      ).join('') + '</div>';
   }
 }
 
@@ -1897,6 +1936,13 @@ function renderBanter() {
     return;
   }
 
+  const existingFeed = el.querySelector('.banter-feed');
+  const wasNearBottom = !existingFeed ||
+    (existingFeed.scrollHeight - existingFeed.scrollTop - existingFeed.clientHeight < 40);
+  const existingInput = document.getElementById('banterInput');
+  const inputVal = existingInput ? existingInput.value : '';
+  const hadFocus = existingInput && document.activeElement === existingInput;
+
   const feedHtml = banterMessages.length
     ? banterMessages.map(m => {
         const cfg = PLAYER_CFG[m.player] || {};
@@ -1914,6 +1960,15 @@ function renderBanter() {
     : '<div class="predict-config-msg">Pick a player above to join the banter</div>';
 
   el.innerHTML = '<div class="banter-feed">' + feedHtml + '</div>' + inputHtml;
+
+  const feed = el.querySelector('.banter-feed');
+  if (feed && wasNearBottom) feed.scrollTop = feed.scrollHeight;
+
+  const input = document.getElementById('banterInput');
+  if (input) {
+    input.value = inputVal;
+    if (hadFocus) input.focus();
+  }
 }
 
 function sendBanter() {
@@ -1934,17 +1989,6 @@ if (firebaseReady) {
     const val = snap.val() || {};
     banterMessages = Object.values(val).sort((a, b) => a.ts - b.ts);
     renderBanter();
-  });
-  claimsRef.on('value', snap => {
-    claimsData = snap.val() || {};
-    // If our saved player got claimed by another device since we last loaded, drop it.
-    if (currentPlayer && claimsData[currentPlayer] && claimsData[currentPlayer] !== DEVICE_ID) {
-      currentPlayer = null;
-      localStorage.removeItem('swPlayer');
-    } else if (currentPlayer && !claimsData[currentPlayer]) {
-      claimsRef.child(currentPlayer).set(DEVICE_ID);
-    }
-    renderPredictPicker();
   });
 }
 
