@@ -73,6 +73,15 @@
     .match-score { font-weight: 800; font-size: 15px; min-width: 46px; text-align: center; flex-shrink: 0; }
     .match-status { font-size: 11px; color: #aaa; text-align: center; margin-top: 6px; }
     .match-status.live { color: #e94560; font-weight: 700; }
+    .match-odds { display: flex; justify-content: center; gap: 14px; font-size: 11px; color: #888; margin-top: 6px; padding-top: 6px; border-top: 1px solid #eee; }
+    .match-odds span b { color: #555; }
+
+    /* Match sub-tabs (Today / Upcoming / Completed) */
+    .subtabs { display: flex; gap: 8px; margin-bottom: 10px; }
+    .subtab { padding: 6px 14px; border-radius: 8px; font-size: 12px; font-weight: 700; background: white; color: #888; cursor: pointer; box-shadow: 0 1px 4px rgba(0,0,0,.06); user-select: none; }
+    .subtab.active { background: linear-gradient(135deg, #667eea, #764ba2); color: white; }
+    .match-tab-content { display: none; }
+    .match-tab-content.active { display: block; }
     .empty-box { text-align: center; padding: 20px; color: #aaa; font-size: 13px; background: white; border-radius: 10px; margin-bottom: 28px; }
 
     /* Knockout tracker */
@@ -331,7 +340,33 @@ async function fetchScoreboard(dates) {
   return res.json();
 }
 
+async function fetchOdds(eventId) {
+  try {
+    const url = 'https://sports.core.api.espn.com/v2/sports/soccer/leagues/fifa.world/events/' +
+      eventId + '/competitions/' + eventId + '/odds/100?lang=en&region=us';
+    const res = await fetch(url);
+    if (!res.ok) return null;
+    return res.json();
+  } catch {
+    return null;
+  }
+}
+
+function gcd(a, b) {
+  return b ? gcd(b, a % b) : a;
+}
+
+function formatFractionalOdds(american) {
+  if (american == null || isNaN(american)) return '—';
+  let num, den;
+  if (american > 0) { num = Math.round(american); den = 100; }
+  else { num = 100; den = Math.round(-american); }
+  const g = gcd(num, den) || 1;
+  return (num / g) + '/' + (den / g);
+}
+
 const KNOCKOUT_DATES = '20260628-20260719';
+const ALL_DATES = '20260611-20260719';
 
 // ── Parse ────────────────────────────────────────────────────────────
 function parseStandings(data) {
@@ -460,60 +495,96 @@ function renderPodium(ranked, knockoutStarted) {
     }).join('') + '</div>';
 }
 
-function renderPrizes(knockoutRanked, groupRanked) {
-  const cards = '<div class="section-title">Prizes — Knockout Stage</div><div class="prizes">' +
-    knockoutRanked.map((p, i) => {
-      const cfg = PLAYER_CFG[p.name];
-      const prz = PRIZES[i];
-      return '<div class="prize-card ' + cfg.border + '">' +
+function renderSideBets(groupRanked) {
+  const mealOwner = groupRanked[0];
+  const cookOwner = groupRanked[groupRanked.length - 1];
+  return '<div class="side-bets">' +
+    '<div class="side-bet">🍽️ <strong>Home Cooked Meal</strong> — ' + mealOwner.name + ' (group stage winner)</div>' +
+    '<div class="side-bet">👨‍🍳 <strong>' + cookOwner.name + '</strong> must cook for ' + mealOwner.name + ' (group stage last place)</div>' +
+    '</div>';
+}
+
+function renderKnockoutPrizes(knockoutRanked, knockoutStarted) {
+  const caption = knockoutStarted ? '' :
+    '<div class="podium-caption">Allocated once the knockout stage gets underway</div>';
+
+  const cards = '<div class="section-title">Prizes — Knockout Stage</div>' + caption + '<div class="prizes">' +
+    PRIZES.map((prz, i) => {
+      const p = knockoutStarted ? knockoutRanked[i] : null;
+      const cfg = p ? PLAYER_CFG[p.name] : null;
+      return '<div class="prize-card' + (cfg ? ' ' + cfg.border : '') + '">' +
         '<div class="prize-emoji">' + prz.emoji + '</div>' +
-        '<div class="prize-place ' + cfg.c + '">' + RANK_LABELS[i] + ' — ' + p.name + '</div>' +
+        '<div class="prize-place' + (cfg ? ' ' + cfg.c : '') + '">' + RANK_LABELS[i] + ' — ' + (p ? p.name : 'TBD') + '</div>' +
         '<div class="prize-name">' + prz.name + '</div>' +
         '</div>';
     }).join('') + '</div>';
 
-  const mealOwner = groupRanked[0];
-  const cookOwner = groupRanked[groupRanked.length - 1];
-  const sideBets = '<div class="side-bets">' +
-    '<div class="side-bet">🍽️ <strong>Home Cooked Meal</strong> — ' + mealOwner.name + ' (group stage winner)</div>' +
-    '<div class="side-bet">👨‍🍳 <strong>' + cookOwner.name + '</strong> must cook for ' + mealOwner.name + ' (group stage last place)</div>' +
-    '</div>';
-
-  return cards + sideBets;
+  return cards;
 }
 
-function renderLiveScores(data) {
-  const events = data.events || [];
-  const html = '<div class="section-title">Live & Today\'s Matches</div>';
-  if (!events.length) {
-    return html + '<div class="empty-box">No matches scheduled today</div>';
-  }
+function renderMatchCard(event, odds) {
+  const comp = event.competitions?.[0];
+  const competitors = comp?.competitors || [];
+  const home = competitors.find(c => c.homeAway === 'home') || competitors[0];
+  const away = competitors.find(c => c.homeAway === 'away') || competitors[1];
+  const status = formatMatchStatus(event);
+  const score = status.state === 'pre' ? 'vs' : (home.score ?? '0') + ' - ' + (away.score ?? '0');
 
-  return html + '<div class="matches-list">' + events.map(event => {
-    const comp = event.competitions?.[0];
-    const competitors = comp?.competitors || [];
-    const home = competitors.find(c => c.homeAway === 'home') || competitors[0];
-    const away = competitors.find(c => c.homeAway === 'away') || competitors[1];
-    const status = formatMatchStatus(event);
-    const score = status.state === 'pre' ? 'vs' : (home.score ?? '0') + ' - ' + (away.score ?? '0');
+  const teamHtml = (c) => {
+    const name = c.team.displayName;
+    const owner = findOwner(name);
+    const flag = c.team.logos?.[0]?.href || '';
+    return (flag ? '<img class="team-flag" src="' + flag + '" alt="" onerror="this.style.display=\'none\'">' : '') +
+      '<span>' + withRank(name) + '</span>' + ownerBadge(owner);
+  };
 
-    const teamHtml = (c) => {
-      const name = c.team.displayName;
-      const owner = findOwner(name);
-      const flag = c.team.logos?.[0]?.href || '';
-      return (flag ? '<img class="team-flag" src="' + flag + '" alt="" onerror="this.style.display=\'none\'">' : '') +
-        '<span>' + withRank(name) + '</span>' + ownerBadge(owner);
-    };
+  const oddsHtml = (odds && status.state !== 'post')
+    ? '<div class="match-odds">' +
+        '<span>' + (home.team.shortDisplayName || home.team.displayName) + ' <b>' + formatFractionalOdds(odds.homeTeamOdds?.moneyLine) + '</b></span>' +
+        '<span>Draw <b>' + formatFractionalOdds(odds.drawOdds?.moneyLine) + '</b></span>' +
+        '<span>' + (away.team.shortDisplayName || away.team.displayName) + ' <b>' + formatFractionalOdds(odds.awayTeamOdds?.moneyLine) + '</b></span>' +
+      '</div>'
+    : '';
 
-    return '<div class="match-card">' +
-      '<div class="match-teams">' +
-        '<div class="match-team home">' + teamHtml(home) + '</div>' +
-        '<div class="match-score">' + score + '</div>' +
-        '<div class="match-team away">' + teamHtml(away) + '</div>' +
-      '</div>' +
-      '<div class="match-status' + (status.state === 'in' ? ' live' : '') + '">' + status.text + '</div>' +
+  return '<div class="match-card">' +
+    '<div class="match-teams">' +
+      '<div class="match-team home">' + teamHtml(home) + '</div>' +
+      '<div class="match-score">' + score + '</div>' +
+      '<div class="match-team away">' + teamHtml(away) + '</div>' +
+    '</div>' +
+    '<div class="match-status' + (status.state === 'in' ? ' live' : '') + '">' + status.text + '</div>' +
+    oddsHtml +
+  '</div>';
+}
+
+function renderMatchesList(events, oddsMap, emptyMsg) {
+  if (!events.length) return '<div class="empty-box">' + emptyMsg + '</div>';
+  return '<div class="matches-list">' + events.map(e => renderMatchCard(e, (oddsMap || {})[e.id])).join('') + '</div>';
+}
+
+function switchMatchTab(el, id) {
+  const row = el.parentElement;
+  row.querySelectorAll('.subtab').forEach(t => t.classList.remove('active'));
+  el.classList.add('active');
+  row.parentElement.querySelectorAll('.match-tab-content').forEach(c => c.classList.toggle('active', c.id === id));
+}
+
+function renderLiveScores(todayEvents, todayError, oddsMap, upcomingEvents, completedEvents) {
+  const html = '<div class="section-title">Live & Today\'s Matches</div>' +
+    '<div class="subtabs">' +
+      '<div class="subtab active" onclick="switchMatchTab(this,\'mToday\')">Today</div>' +
+      '<div class="subtab" onclick="switchMatchTab(this,\'mUpcoming\')">Upcoming</div>' +
+      '<div class="subtab" onclick="switchMatchTab(this,\'mCompleted\')">Completed</div>' +
     '</div>';
-  }).join('') + '</div>';
+
+  const todayHtml = todayError
+    ? '<div class="warn-box">⚠️ Could not load today\'s matches: ' + todayError + '</div>'
+    : renderMatchesList(todayEvents, oddsMap, 'No matches scheduled today');
+
+  return html +
+    '<div class="match-tab-content active" id="mToday">' + todayHtml + '</div>' +
+    '<div class="match-tab-content" id="mUpcoming">' + renderMatchesList(upcomingEvents, oddsMap, 'No upcoming matches found') + '</div>' +
+    '<div class="match-tab-content" id="mCompleted">' + renderMatchesList(completedEvents, {}, 'No completed matches yet') + '</div>';
 }
 
 function renderKnockoutTracker(matchesByRound) {
@@ -579,10 +650,11 @@ async function render() {
   document.getElementById('lastUpdated').textContent = 'Updating…';
   const app = document.getElementById('app');
 
-  const [standingsResult, liveResult, knockoutResult] = await Promise.allSettled([
+  const [standingsResult, liveResult, knockoutResult, allResult] = await Promise.allSettled([
     fetchStandings(),
     fetchScoreboard(),
     fetchScoreboard(KNOCKOUT_DATES),
+    fetchScoreboard(ALL_DATES),
   ]);
 
   if (standingsResult.status !== 'fulfilled') {
@@ -604,16 +676,41 @@ async function render() {
     .sort((a, b) => compareOwners(a, b, teams, teamDepth, totals))
     .map((name, i) => ({ name, pts: totals[name], rank: i + 1 }));
 
+  const todayEvents = liveResult.status === 'fulfilled' ? (liveResult.value.events || []) : [];
+
+  let upcomingEvents = [], completedEvents = [];
+  if (allResult.status === 'fulfilled') {
+    const allEvents = allResult.value.events || [];
+    const todayStr = new Date().toISOString().slice(0, 10);
+    completedEvents = allEvents
+      .filter(e => e.status?.type?.completed)
+      .sort((a, b) => new Date(b.date) - new Date(a.date));
+    upcomingEvents = allEvents
+      .filter(e => !e.status?.type?.completed && e.date.slice(0, 10) > todayStr)
+      .sort((a, b) => new Date(a.date) - new Date(b.date))
+      .slice(0, 10);
+  }
+
+  const oddsEvents = [...todayEvents, ...upcomingEvents];
+  const oddsResults = await Promise.all(oddsEvents.map(e => fetchOdds(e.id)));
+  const oddsMap = {};
+  oddsEvents.forEach((e, i) => { oddsMap[e.id] = oddsResults[i]; });
+
   document.getElementById('lastUpdated').textContent =
     'Updated ' + new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
   app.innerHTML =
     renderPodium(knockoutRanked, knockoutStarted) +
-    renderPrizes(knockoutRanked, ranked) +
-    (liveResult.status === 'fulfilled'
-      ? renderLiveScores(liveResult.value)
-      : '<div class="warn-box">⚠️ Could not load live scores: ' + liveResult.reason.message + '</div>') +
+    renderSideBets(ranked) +
+    renderLiveScores(
+      todayEvents,
+      liveResult.status === 'fulfilled' ? null : liveResult.reason.message,
+      oddsMap,
+      upcomingEvents,
+      completedEvents
+    ) +
     renderTeams(ranked, teams) +
+    renderKnockoutPrizes(knockoutRanked, knockoutStarted) +
     (knockoutResult.status === 'fulfilled'
       ? renderKnockoutTracker(matchesByRound)
       : '<div class="warn-box">⚠️ Could not load knockout schedule: ' + knockoutResult.reason.message + '</div>') +
