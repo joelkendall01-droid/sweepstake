@@ -164,6 +164,23 @@
     /* Flappy Ball game */
     .flappy-field { background: linear-gradient(180deg, #87ceeb 0%, #b3e5fc 100%); }
     .flappy-field canvas { display: block; width: 100%; height: 100%; }
+
+    /* Sudoku game */
+    .sudoku-wrap { max-width: 420px; margin: 0 auto; text-align: center; padding: 0 16px 24px; }
+    .sudoku-diffs { display: flex; gap: 8px; margin-bottom: 12px; }
+    .sudoku-diff { flex: 1; padding: 8px 6px; border-radius: 8px; font-size: 12px; font-weight: 800; background: white; color: #888; cursor: pointer; box-shadow: 0 1px 4px rgba(0,0,0,.06); user-select: none; }
+    .sudoku-diff.active { background: linear-gradient(135deg, #5fb86b, #2e7d32); color: white; }
+    .sudoku-board { display: grid; grid-template-columns: repeat(9, 1fr); background: #2e7d32; border: 3px solid #2e7d32; border-radius: 10px; overflow: hidden; aspect-ratio: 1; max-width: 360px; margin: 0 auto 14px; box-shadow: 0 4px 16px rgba(0,0,0,.15); }
+    .sudoku-cell { background: white; display: flex; align-items: center; justify-content: center; font-size: 18px; font-weight: 700; cursor: pointer; user-select: none; color: #333; border: 1px solid #e3f0e4; }
+    .sudoku-cell.given { color: #2e7d32; font-weight: 800; cursor: default; background: #f1f8f0; }
+    .sudoku-cell.selected { background: #fff3c4; }
+    .sudoku-cell.error { color: #e94560; }
+    .sudoku-cell.br3 { border-right: 2px solid #2e7d32; }
+    .sudoku-cell.bb3 { border-bottom: 2px solid #2e7d32; }
+    .sudoku-numpad { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; max-width: 360px; margin: 0 auto; }
+    .sudoku-num { padding: 12px 0; border-radius: 8px; background: white; font-size: 18px; font-weight: 800; box-shadow: 0 1px 4px rgba(0,0,0,.06); cursor: pointer; color: #333; user-select: none; }
+    .sudoku-num.erase { color: #e94560; font-size: 16px; }
+    .sudoku-win { font-size: 13px; font-weight: 800; color: #2e7d32; margin-bottom: 10px; }
   </style>
 </head>
 <body>
@@ -179,62 +196,82 @@
 
 <div class="tabs">
   <div class="tab active" id="tabStandings" onclick="switchTab('standings')">📊 Standings</div>
-  <div class="tab" id="tabGame" onclick="switchTab('game')">⚽ Keepy Uppy</div>
-  <div class="tab" id="tabHydro" onclick="switchTab('hydro')">💧 Hydration Break</div>
-  <div class="tab" id="tabFlappy" onclick="switchTab('flappy')">⚽ Flappy Ball</div>
+  <div class="tab" id="tabGames" onclick="switchTab('games')">🎮 Games</div>
 </div>
 
 <div class="container tab-content active" id="standingsTab">
   <div id="app"><div class="loading">⚽ Fetching live standings…</div></div>
 </div>
 
-<div class="tab-content" id="gameTab">
-  <div class="game-wrap">
-    <div class="game-stats">
-      <div><span class="stat-label">Score</span><span class="stat-value" id="kuScore">0</span></div>
-      <div><span class="stat-label">Best</span><span class="stat-value" id="kuBest">0</span></div>
-    </div>
-    <div class="game-field" id="gameField">
-      <div class="game-ball" id="kuBall">⚽</div>
-    </div>
-    <div class="game-hint">Tap the ball before it hits the ground!</div>
+<div class="tab-content" id="gamesTab">
+  <div class="subtabs game-subtabs">
+    <div class="subtab active" onclick="switchGame(this,'gameKeepy')">⚽ Keepy Uppy</div>
+    <div class="subtab" onclick="switchGame(this,'gameHydro')">💧 Hydration</div>
+    <div class="subtab" onclick="switchGame(this,'gameFlappy')">🐦 Flappy Ball</div>
+    <div class="subtab" onclick="switchGame(this,'gameSudoku')">🔢 Sudoku</div>
   </div>
-</div>
 
-<div class="tab-content" id="hydroTab">
-  <div class="game-wrap">
-    <div class="game-stats">
-      <div><span class="stat-label">Score</span><span class="stat-value" id="hyScore">0</span></div>
-      <div><span class="stat-label">Time</span><span class="stat-value" id="hyTime">30</span></div>
-      <div><span class="stat-label">Best</span><span class="stat-value" id="hyBest">0</span></div>
-    </div>
-    <div class="game-field hydro-field" id="hydroField">
-      <div class="hydro-grid" id="hydroGrid"></div>
-      <div class="game-overlay" id="hydroOverlay">
-        <div style="font-size:28px">💧 Hydration Break</div>
-        <div>Tap the glowing cup before time runs out!</div>
-        <button id="hydroStartBtn">Start</button>
+  <div class="match-tab-content active" id="gameKeepy">
+    <div class="game-wrap">
+      <div class="game-stats">
+        <div><span class="stat-label">Score</span><span class="stat-value" id="kuScore">0</span></div>
+        <div><span class="stat-label">Best</span><span class="stat-value" id="kuBest">0</span></div>
       </div>
+      <div class="game-field" id="gameField">
+        <div class="game-ball" id="kuBall">⚽</div>
+      </div>
+      <div class="game-hint">Tap the ball before it hits the ground!</div>
     </div>
-    <div class="game-hint">30 seconds — tap the cup with water as fast as you can!</div>
   </div>
-</div>
 
-<div class="tab-content" id="flappyTab">
-  <div class="game-wrap">
-    <div class="game-stats">
-      <div><span class="stat-label">Score</span><span class="stat-value" id="flScore">0</span></div>
-      <div><span class="stat-label">Best</span><span class="stat-value" id="flBest">0</span></div>
-    </div>
-    <div class="game-field flappy-field" id="flappyField">
-      <canvas id="flappyCanvas"></canvas>
-      <div class="game-overlay" id="flappyOverlay">
-        <div style="font-size:28px">⚽ Flappy Ball</div>
-        <div>Tap to flap and dodge the goalposts!</div>
-        <button id="flappyStartBtn">Start</button>
+  <div class="match-tab-content" id="gameHydro">
+    <div class="game-wrap">
+      <div class="game-stats">
+        <div><span class="stat-label">Score</span><span class="stat-value" id="hyScore">0</span></div>
+        <div><span class="stat-label">Time</span><span class="stat-value" id="hyTime">30</span></div>
+        <div><span class="stat-label">Best</span><span class="stat-value" id="hyBest">0</span></div>
       </div>
+      <div class="game-field hydro-field" id="hydroField">
+        <div class="hydro-grid" id="hydroGrid"></div>
+        <div class="game-overlay" id="hydroOverlay">
+          <div style="font-size:28px">💧 Hydration Break</div>
+          <div>Tap the glowing cup before time runs out!</div>
+          <button id="hydroStartBtn">Start</button>
+        </div>
+      </div>
+      <div class="game-hint">30 seconds — tap the cup with water as fast as you can!</div>
     </div>
-    <div class="game-hint">Tap anywhere to flap — avoid the posts and the ground!</div>
+  </div>
+
+  <div class="match-tab-content" id="gameFlappy">
+    <div class="game-wrap">
+      <div class="game-stats">
+        <div><span class="stat-label">Score</span><span class="stat-value" id="flScore">0</span></div>
+        <div><span class="stat-label">Best</span><span class="stat-value" id="flBest">0</span></div>
+      </div>
+      <div class="game-field flappy-field" id="flappyField">
+        <canvas id="flappyCanvas"></canvas>
+        <div class="game-overlay" id="flappyOverlay">
+          <div style="font-size:28px">⚽ Flappy Ball</div>
+          <div>Tap to flap and dodge the goalposts!</div>
+          <button id="flappyStartBtn">Start</button>
+        </div>
+      </div>
+      <div class="game-hint">Tap anywhere to flap — avoid the posts and the ground!</div>
+    </div>
+  </div>
+
+  <div class="match-tab-content" id="gameSudoku">
+    <div class="sudoku-wrap">
+      <div class="sudoku-diffs">
+        <div class="sudoku-diff active" onclick="newSudoku(this,'easy')">🥅 Friendly</div>
+        <div class="sudoku-diff" onclick="newSudoku(this,'medium')">🏆 Group Stage</div>
+        <div class="sudoku-diff" onclick="newSudoku(this,'hard')">🌍 Final</div>
+      </div>
+      <div class="sudoku-board" id="sudokuBoard"></div>
+      <div class="sudoku-numpad" id="sudokuNumpad"></div>
+      <div class="game-hint">Tap a cell, then tap a number. Fill the grid before the final whistle!</div>
+    </div>
   </div>
 </div>
 
@@ -899,16 +936,21 @@ initFootballToy();
 // ── Tabs ─────────────────────────────────────────────────────────────
 function switchTab(name) {
   document.getElementById('tabStandings').classList.toggle('active', name === 'standings');
-  document.getElementById('tabGame').classList.toggle('active', name === 'game');
-  document.getElementById('tabHydro').classList.toggle('active', name === 'hydro');
-  document.getElementById('tabFlappy').classList.toggle('active', name === 'flappy');
+  document.getElementById('tabGames').classList.toggle('active', name === 'games');
   document.getElementById('standingsTab').classList.toggle('active', name === 'standings');
-  document.getElementById('gameTab').classList.toggle('active', name === 'game');
-  document.getElementById('hydroTab').classList.toggle('active', name === 'hydro');
-  document.getElementById('flappyTab').classList.toggle('active', name === 'flappy');
-  if (name === 'game') initKeepyUppy();
-  if (name === 'hydro') initHydration();
-  if (name === 'flappy') initFlappy();
+  document.getElementById('gamesTab').classList.toggle('active', name === 'games');
+  if (name === 'games') initKeepyUppy();
+}
+
+function switchGame(el, id) {
+  const row = el.parentElement;
+  row.querySelectorAll('.subtab').forEach(t => t.classList.remove('active'));
+  el.classList.add('active');
+  row.parentElement.querySelectorAll('.match-tab-content').forEach(c => c.classList.toggle('active', c.id === id));
+  if (id === 'gameKeepy') initKeepyUppy();
+  if (id === 'gameHydro') initHydration();
+  if (id === 'gameFlappy') initFlappy();
+  if (id === 'gameSudoku') initSudoku();
 }
 
 // ── Keepy Uppy game ──────────────────────────────────────────────────
@@ -1271,6 +1313,157 @@ function initFlappy() {
     if (!running) reset();
     else { fw = field.clientWidth; fh = field.clientHeight; canvas.width = fw; canvas.height = fh; }
   });
+}
+
+// ── Sudoku game ──────────────────────────────────────────────────────
+const SUDOKU_CLUES_REMOVED = { easy: 36, medium: 46, hard: 54 };
+let sudokuState = null;
+
+function shuffle(arr) {
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+  return arr;
+}
+
+function generateSolvedGrid() {
+  const grid = Array.from({ length: 9 }, () => Array(9).fill(0));
+
+  function valid(r, c, v) {
+    for (let i = 0; i < 9; i++) {
+      if (grid[r][i] === v || grid[i][c] === v) return false;
+    }
+    const br = r - r % 3, bc = c - c % 3;
+    for (let i = 0; i < 3; i++) {
+      for (let j = 0; j < 3; j++) {
+        if (grid[br + i][bc + j] === v) return false;
+      }
+    }
+    return true;
+  }
+
+  function fill(pos) {
+    if (pos === 81) return true;
+    const r = Math.floor(pos / 9), c = pos % 9;
+    for (const v of shuffle([1, 2, 3, 4, 5, 6, 7, 8, 9])) {
+      if (valid(r, c, v)) {
+        grid[r][c] = v;
+        if (fill(pos + 1)) return true;
+        grid[r][c] = 0;
+      }
+    }
+    return false;
+  }
+
+  fill(0);
+  return grid;
+}
+
+function generateSudokuPuzzle(difficulty) {
+  const solution = generateSolvedGrid();
+  const puzzle = solution.map(row => row.slice());
+  const cells = shuffle(Array.from({ length: 81 }, (_, i) => i));
+  const removeCount = SUDOKU_CLUES_REMOVED[difficulty] || SUDOKU_CLUES_REMOVED.easy;
+  for (let i = 0; i < removeCount; i++) {
+    const pos = cells[i];
+    puzzle[Math.floor(pos / 9)][pos % 9] = 0;
+  }
+  return { puzzle, solution };
+}
+
+function initSudoku() {
+  if (sudokuState) return;
+  newSudoku(document.querySelector('#gameSudoku .sudoku-diff.active'), 'easy');
+}
+
+function newSudoku(el, difficulty) {
+  if (el) {
+    el.parentElement.querySelectorAll('.sudoku-diff').forEach(d => d.classList.remove('active'));
+    el.classList.add('active');
+  }
+  const { puzzle, solution } = generateSudokuPuzzle(difficulty);
+  sudokuState = {
+    puzzle: puzzle.map(row => row.slice()),
+    given: puzzle.map(row => row.map(v => v !== 0)),
+    solution,
+    selected: null,
+  };
+  resetSudokuHint();
+  renderSudokuBoard();
+  renderSudokuNumpad();
+}
+
+function renderSudokuBoard() {
+  const board = document.getElementById('sudokuBoard');
+  board.innerHTML = '';
+  for (let r = 0; r < 9; r++) {
+    for (let c = 0; c < 9; c++) {
+      const value = sudokuState.puzzle[r][c];
+      const given = sudokuState.given[r][c];
+      let cls = 'sudoku-cell';
+      if (given) cls += ' given';
+      if (sudokuState.selected && sudokuState.selected[0] === r && sudokuState.selected[1] === c) cls += ' selected';
+      if (value !== 0 && !given && value !== sudokuState.solution[r][c]) cls += ' error';
+      if (c === 2 || c === 5) cls += ' br3';
+      if (r === 2 || r === 5) cls += ' bb3';
+
+      const cell = document.createElement('div');
+      cell.className = cls;
+      cell.textContent = value !== 0 ? String(value) : '';
+      cell.addEventListener('click', () => selectSudokuCell(r, c));
+      board.appendChild(cell);
+    }
+  }
+}
+
+function renderSudokuNumpad() {
+  const pad = document.getElementById('sudokuNumpad');
+  pad.innerHTML = '';
+  for (let n = 1; n <= 9; n++) {
+    const btn = document.createElement('div');
+    btn.className = 'sudoku-num';
+    btn.textContent = String(n);
+    btn.addEventListener('click', () => sudokuInput(n));
+    pad.appendChild(btn);
+  }
+  const erase = document.createElement('div');
+  erase.className = 'sudoku-num erase';
+  erase.textContent = '⌫';
+  erase.addEventListener('click', () => sudokuInput(0));
+  pad.appendChild(erase);
+}
+
+function selectSudokuCell(r, c) {
+  if (sudokuState.given[r][c]) return;
+  sudokuState.selected = [r, c];
+  renderSudokuBoard();
+}
+
+function sudokuInput(value) {
+  if (!sudokuState.selected) return;
+  const [r, c] = sudokuState.selected;
+  if (sudokuState.given[r][c]) return;
+  sudokuState.puzzle[r][c] = value;
+  renderSudokuBoard();
+  checkSudokuWin();
+}
+
+function resetSudokuHint() {
+  const hint = document.querySelector('#gameSudoku .game-hint');
+  hint.classList.remove('sudoku-win');
+  hint.textContent = 'Tap a cell, then tap a number. Fill the grid before the final whistle!';
+}
+
+function checkSudokuWin() {
+  const solved = sudokuState.puzzle.every((row, r) => row.every((v, c) => v === sudokuState.solution[r][c]));
+  const hint = document.querySelector('#gameSudoku .game-hint');
+  if (solved) {
+    hint.textContent = '🎉⚽ GOAL! Full-time — puzzle solved!';
+    hint.classList.add('sudoku-win');
+  } else {
+    resetSudokuHint();
+  }
 }
 </script>
 </body>
