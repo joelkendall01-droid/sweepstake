@@ -153,6 +153,17 @@
     .game-overlay { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; background: rgba(0,0,0,.5); color: white; font-weight: 800; text-align: center; padding: 20px; }
     .game-overlay button { padding: 10px 24px; border-radius: 10px; border: none; background: white; color: #333; font-weight: 800; font-size: 14px; cursor: pointer; }
     .game-hint { margin-top: 10px; font-size: 12px; color: #aaa; }
+
+    /* Hydration Break game */
+    .hydro-field { background: linear-gradient(180deg, #e0f7fa, #b3e5fc); display: flex; align-items: center; justify-content: center; }
+    .hydro-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; width: 88%; max-width: 320px; }
+    .hydro-cell { aspect-ratio: 1; border-radius: 14px; background: rgba(255,255,255,.6); display: flex; align-items: center; justify-content: center; font-size: 34px; cursor: pointer; user-select: none; transition: transform .08s; box-shadow: 0 2px 8px rgba(0,0,0,.06); }
+    .hydro-cell.active { background: linear-gradient(135deg, #4fc3f7, #0288d1); transform: scale(1.06); }
+    .hydro-cell:active { transform: scale(0.92); }
+
+    /* Flappy Ball game */
+    .flappy-field { background: linear-gradient(180deg, #87ceeb 0%, #b3e5fc 100%); }
+    .flappy-field canvas { display: block; width: 100%; height: 100%; }
   </style>
 </head>
 <body>
@@ -169,6 +180,8 @@
 <div class="tabs">
   <div class="tab active" id="tabStandings" onclick="switchTab('standings')">📊 Standings</div>
   <div class="tab" id="tabGame" onclick="switchTab('game')">⚽ Keepy Uppy</div>
+  <div class="tab" id="tabHydro" onclick="switchTab('hydro')">💧 Hydration Break</div>
+  <div class="tab" id="tabFlappy" onclick="switchTab('flappy')">⚽ Flappy Ball</div>
 </div>
 
 <div class="container tab-content active" id="standingsTab">
@@ -185,6 +198,43 @@
       <div class="game-ball" id="kuBall">⚽</div>
     </div>
     <div class="game-hint">Tap the ball before it hits the ground!</div>
+  </div>
+</div>
+
+<div class="tab-content" id="hydroTab">
+  <div class="game-wrap">
+    <div class="game-stats">
+      <div><span class="stat-label">Score</span><span class="stat-value" id="hyScore">0</span></div>
+      <div><span class="stat-label">Time</span><span class="stat-value" id="hyTime">30</span></div>
+      <div><span class="stat-label">Best</span><span class="stat-value" id="hyBest">0</span></div>
+    </div>
+    <div class="game-field hydro-field" id="hydroField">
+      <div class="hydro-grid" id="hydroGrid"></div>
+      <div class="game-overlay" id="hydroOverlay">
+        <div style="font-size:28px">💧 Hydration Break</div>
+        <div>Tap the glowing cup before time runs out!</div>
+        <button id="hydroStartBtn">Start</button>
+      </div>
+    </div>
+    <div class="game-hint">30 seconds — tap the cup with water as fast as you can!</div>
+  </div>
+</div>
+
+<div class="tab-content" id="flappyTab">
+  <div class="game-wrap">
+    <div class="game-stats">
+      <div><span class="stat-label">Score</span><span class="stat-value" id="flScore">0</span></div>
+      <div><span class="stat-label">Best</span><span class="stat-value" id="flBest">0</span></div>
+    </div>
+    <div class="game-field flappy-field" id="flappyField">
+      <canvas id="flappyCanvas"></canvas>
+      <div class="game-overlay" id="flappyOverlay">
+        <div style="font-size:28px">⚽ Flappy Ball</div>
+        <div>Tap to flap and dodge the goalposts!</div>
+        <button id="flappyStartBtn">Start</button>
+      </div>
+    </div>
+    <div class="game-hint">Tap anywhere to flap — avoid the posts and the ground!</div>
   </div>
 </div>
 
@@ -850,9 +900,15 @@ initFootballToy();
 function switchTab(name) {
   document.getElementById('tabStandings').classList.toggle('active', name === 'standings');
   document.getElementById('tabGame').classList.toggle('active', name === 'game');
+  document.getElementById('tabHydro').classList.toggle('active', name === 'hydro');
+  document.getElementById('tabFlappy').classList.toggle('active', name === 'flappy');
   document.getElementById('standingsTab').classList.toggle('active', name === 'standings');
   document.getElementById('gameTab').classList.toggle('active', name === 'game');
+  document.getElementById('hydroTab').classList.toggle('active', name === 'hydro');
+  document.getElementById('flappyTab').classList.toggle('active', name === 'flappy');
   if (name === 'game') initKeepyUppy();
+  if (name === 'hydro') initHydration();
+  if (name === 'flappy') initFlappy();
 }
 
 // ── Keepy Uppy game ──────────────────────────────────────────────────
@@ -964,6 +1020,256 @@ function initKeepyUppy() {
 
   window.addEventListener('resize', () => {
     fw = field.clientWidth; fh = field.clientHeight;
+  });
+}
+
+// ── Hydration Break game ─────────────────────────────────────────────
+let hyStarted = false;
+function initHydration() {
+  if (hyStarted) return;
+  hyStarted = true;
+
+  const grid = document.getElementById('hydroGrid');
+  const scoreEl = document.getElementById('hyScore');
+  const timeEl = document.getElementById('hyTime');
+  const bestEl = document.getElementById('hyBest');
+  const overlay = document.getElementById('hydroOverlay');
+
+  const CELL_COUNT = 9;
+  const GAME_TIME = 30;
+
+  let score = 0, timeLeft = GAME_TIME, activeIdx = -1, running = false;
+  let spawnTimer = null, countdownTimer = null;
+  let best = parseInt(localStorage.getItem('hyBest') || '0', 10);
+  bestEl.textContent = best;
+
+  const cells = [];
+  for (let i = 0; i < CELL_COUNT; i++) {
+    const cell = document.createElement('div');
+    cell.className = 'hydro-cell';
+    cell.textContent = '🥤';
+    cell.addEventListener('pointerdown', () => onTap(i));
+    grid.appendChild(cell);
+    cells.push(cell);
+  }
+
+  function clearActive() {
+    if (activeIdx >= 0) {
+      cells[activeIdx].classList.remove('active');
+      cells[activeIdx].textContent = '🥤';
+      activeIdx = -1;
+    }
+  }
+
+  function spawn() {
+    clearActive();
+    activeIdx = Math.floor(Math.random() * CELL_COUNT);
+    cells[activeIdx].classList.add('active');
+    cells[activeIdx].textContent = '💧';
+    spawnTimer = setTimeout(spawn, 450 + Math.random() * 500);
+  }
+
+  function onTap(i) {
+    if (!running || i !== activeIdx) return;
+    score++;
+    scoreEl.textContent = score;
+    clearTimeout(spawnTimer);
+    clearActive();
+    spawnTimer = setTimeout(spawn, 250);
+  }
+
+  function tickCountdown() {
+    timeLeft--;
+    timeEl.textContent = timeLeft;
+    if (timeLeft <= 0) endGame();
+  }
+
+  function startGame() {
+    score = 0;
+    timeLeft = GAME_TIME;
+    scoreEl.textContent = '0';
+    timeEl.textContent = String(GAME_TIME);
+    clearActive();
+    overlay.style.display = 'none';
+    running = true;
+    spawn();
+    countdownTimer = setInterval(tickCountdown, 1000);
+  }
+
+  function endGame() {
+    running = false;
+    clearTimeout(spawnTimer);
+    clearInterval(countdownTimer);
+    clearActive();
+    if (score > best) {
+      best = score;
+      localStorage.setItem('hyBest', best);
+      bestEl.textContent = best;
+    }
+    overlay.innerHTML = '<div style="font-size:28px">💧 Time\'s Up!</div>' +
+      '<div>Score: ' + score + '</div>' +
+      (score > 0 && score >= best ? '<div>🎉 New Best!</div>' : '') +
+      '<button id="hydroStartBtn">Play Again</button>';
+    overlay.style.display = 'flex';
+    document.getElementById('hydroStartBtn').addEventListener('pointerdown', startGame);
+  }
+
+  document.getElementById('hydroStartBtn').addEventListener('pointerdown', startGame);
+}
+
+// ── Flappy Ball game ─────────────────────────────────────────────────
+let flStarted = false;
+function initFlappy() {
+  if (flStarted) return;
+  flStarted = true;
+
+  const field = document.getElementById('flappyField');
+  const canvas = document.getElementById('flappyCanvas');
+  const ctx = canvas.getContext('2d');
+  const scoreEl = document.getElementById('flScore');
+  const bestEl = document.getElementById('flBest');
+  const overlay = document.getElementById('flappyOverlay');
+
+  const GRAVITY = 1700;
+  const FLAP_VEL = -460;
+  const BALL_R = 16;
+  const PIPE_W = 60;
+  const PIPE_GAP = 150;
+  const PIPE_SPEED = 180;
+  const SPAWN_DIST = 220;
+
+  let fw = 0, fh = 0;
+  let ball = { x: 0, y: 0, vy: 0 };
+  let pipes = [];
+  let score = 0;
+  let running = false;
+  let lastTime = performance.now();
+  let distSinceSpawn = 0;
+  let best = parseInt(localStorage.getItem('flBest') || '0', 10);
+  bestEl.textContent = best;
+
+  function resize() {
+    fw = field.clientWidth;
+    fh = field.clientHeight;
+    canvas.width = fw;
+    canvas.height = fh;
+  }
+
+  function spawnPipe(x) {
+    const margin = 40;
+    const gapY = margin + Math.random() * Math.max(10, fh - PIPE_GAP - margin * 2);
+    pipes.push({ x, gapY, passed: false });
+  }
+
+  function reset() {
+    resize();
+    ball = { x: fw * 0.28, y: fh / 2, vy: 0 };
+    pipes = [];
+    score = 0;
+    scoreEl.textContent = '0';
+    distSinceSpawn = 0;
+    spawnPipe(fw + PIPE_W);
+  }
+
+  function startGame() {
+    reset();
+    running = true;
+    overlay.style.display = 'none';
+    lastTime = performance.now();
+  }
+
+  function flap() {
+    if (!running) { startGame(); return; }
+    ball.vy = FLAP_VEL;
+  }
+
+  function endGame() {
+    running = false;
+    if (score > best) {
+      best = score;
+      localStorage.setItem('flBest', best);
+      bestEl.textContent = best;
+    }
+    overlay.innerHTML = '<div style="font-size:28px">⚽ Game Over</div>' +
+      '<div>Score: ' + score + '</div>' +
+      (score > 0 && score >= best ? '<div>🎉 New Best!</div>' : '') +
+      '<button id="flappyStartBtn">Play Again</button>';
+    overlay.style.display = 'flex';
+    document.getElementById('flappyStartBtn').addEventListener('pointerdown', (e) => {
+      e.stopPropagation();
+      startGame();
+    });
+  }
+
+  function draw() {
+    ctx.clearRect(0, 0, fw, fh);
+    ctx.fillStyle = '#2e7d32';
+    pipes.forEach(p => {
+      ctx.fillRect(p.x, 0, PIPE_W, p.gapY);
+      ctx.fillRect(p.x, p.gapY + PIPE_GAP, PIPE_W, fh - (p.gapY + PIPE_GAP));
+    });
+    ctx.font = (BALL_R * 2) + 'px serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('⚽', ball.x, ball.y);
+  }
+
+  function tick(now) {
+    let dt = (now - lastTime) / 1000;
+    lastTime = now;
+    if (dt > 0.05) dt = 0.05;
+
+    if (running) {
+      ball.vy += GRAVITY * dt;
+      ball.y += ball.vy * dt;
+
+      pipes.forEach(p => p.x -= PIPE_SPEED * dt);
+      pipes = pipes.filter(p => p.x + PIPE_W > -10);
+
+      distSinceSpawn += PIPE_SPEED * dt;
+      if (distSinceSpawn >= SPAWN_DIST) {
+        distSinceSpawn = 0;
+        spawnPipe(fw + PIPE_W);
+      }
+
+      if (ball.y - BALL_R < 0 || ball.y + BALL_R > fh) {
+        endGame();
+      }
+      for (const p of pipes) {
+        if (ball.x + BALL_R > p.x && ball.x - BALL_R < p.x + PIPE_W) {
+          if (ball.y - BALL_R < p.gapY || ball.y + BALL_R > p.gapY + PIPE_GAP) {
+            endGame();
+            break;
+          }
+        }
+        if (!p.passed && p.x + PIPE_W < ball.x) {
+          p.passed = true;
+          score++;
+          scoreEl.textContent = score;
+        }
+      }
+    }
+
+    draw();
+    requestAnimationFrame(tick);
+  }
+
+  reset();
+  draw();
+  requestAnimationFrame(tick);
+
+  field.addEventListener('pointerdown', (e) => {
+    if (e.target.tagName === 'BUTTON') return;
+    flap();
+  });
+  document.getElementById('flappyStartBtn').addEventListener('pointerdown', (e) => {
+    e.stopPropagation();
+    startGame();
+  });
+
+  window.addEventListener('resize', () => {
+    if (!running) reset();
+    else { fw = field.clientWidth; fh = field.clientHeight; canvas.width = fw; canvas.height = fh; }
   });
 }
 </script>
