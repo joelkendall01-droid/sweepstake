@@ -81,6 +81,7 @@
     .podium-name { font-weight: 800; font-size: 17px; }
     .podium-points { font-size: 32px; font-weight: 900; line-height: 1; }
     .podium-pts-label { font-size: 11px; color: var(--muted-2); margin-top: 2px; }
+    .podium-proj { font-size: 10px; color: var(--muted-2); margin-top: 3px; }
     .podium-block { border-radius: 10px 10px 0 0; margin-top: 10px; display: flex; align-items: center; justify-content: center; font-size: 28px; }
     .rank-1 .podium-avatar { background: linear-gradient(135deg, #f7b733, #fc4a1a); box-shadow: 0 4px 16px rgba(247,183,51,.45); }
     .rank-1 .podium-block  { background: linear-gradient(135deg, #f7b733, #fc4a1a); height: 100px; }
@@ -301,8 +302,9 @@
     .history-pick-pts.pts-3 { background: #2e7d32; color: #fff; }
     .history-pick-pts.pts-1 { background: #f9a825; color: #2b2b00; }
     .history-pick-pts.pts-0 { background: var(--border); color: var(--muted); }
-    .game-leaderboard { display: none; flex-direction: column; gap: 8px; margin-bottom: 16px; }
-    .game-leaderboard.open { display: flex; }
+    .player-projected { font-size: 11px; opacity: 0.75; margin-top: 2px; }
+    .team-proj { font-size: 11px; color: var(--muted); margin-left: 4px; }
+    .game-leaderboard { display: flex; flex-direction: column; gap: 8px; margin-bottom: 16px; }
     .gl-row { background: var(--card-bg); border-radius: 10px; padding: 8px 12px; font-size: 12px; box-shadow: 0 1px 4px var(--card-shadow-sm); }
     .gl-game-title { font-weight: 800; margin-bottom: 6px; }
     .gl-players { display: flex; flex-wrap: wrap; gap: 12px; }
@@ -407,10 +409,7 @@
 </div>
 
 <div class="tab-content" id="gamesTab">
-  <div class="section-title-row">
-    <div class="section-title">🏆 Game Leaderboard</div>
-    <button class="info-btn" onclick="toggleGameLeaderboard(event)" aria-label="Show game leaderboard">▾</button>
-  </div>
+  <div class="section-title">🏆 Game Leaderboard</div>
   <div class="game-leaderboard" id="gameLeaderboard"></div>
 
   <div class="subtabs game-subtabs">
@@ -821,7 +820,7 @@ function parseStandings(data) {
       if (owner) {
         totals[owner] += pts;
         gds[owner] += gd;
-        teams[owner].push({ name, flag, pts, rec, gd });
+        teams[owner].push({ name, flag, pts, rec, gd, gp });
       } else {
         unmatched.push(name);
       }
@@ -906,19 +905,24 @@ function formatMatchStatus(event) {
 }
 
 // ── Render ───────────────────────────────────────────────────────────
-function renderPodium(ranked, knockoutStarted) {
+function renderPodium(ranked, knockoutStarted, projectedTotals) {
   const order   = ranked.length >= 3 ? [ranked[1], ranked[0], ranked[2]] : ranked;
   const rankCls = ['rank-2', 'rank-1', 'rank-3'];
   const blocks  = ['🥈', '🏆', '🥉'];
   const caption = knockoutStarted ? '' : '<div class="podium-caption">Provisional — based on group stage points (knockout stage hasn\'t started yet)</div>';
   return caption + '<div class="podium-wrap">' +
     order.map((p, i) => {
-      const cfg = PLAYER_CFG[p.name];
+      const cfg  = PLAYER_CFG[p.name];
+      const proj = projectedTotals?.[p.name];
+      const projHtml = (proj !== null && proj !== undefined)
+        ? '<div class="podium-proj">📈 ~' + proj + ' projected</div>'
+        : '';
       return '<div class="podium-item ' + rankCls[i] + '">' +
         '<div class="podium-avatar ' + cfg.bg + '">' + avatarHtml(cfg, p.name) + '</div>' +
         '<div class="podium-name">' + p.name + '</div>' +
         '<div class="podium-points ' + cfg.c + '">' + p.pts + '</div>' +
         '<div class="podium-pts-label">pts</div>' +
+        projHtml +
         '<div class="podium-block">' + blocks[i] + '</div>' +
         '</div>';
     }).join('') + '</div>';
@@ -1182,29 +1186,43 @@ function renderKnockoutTracker(matchesByRound) {
     '<div class="match-tab-content" id="koBracket">' + renderKnockoutBracket(roundsWithMatches, matchesByRound) + '</div>';
 }
 
+const GROUP_GAMES = 3;
+
 function renderTeams(ranked, teams) {
   return '<div class="section-title">Group Stage — Team Breakdown</div><div class="teams-grid">' +
     ranked.map(p => {
       const cfg  = PLAYER_CFG[p.name];
       const list = (teams[p.name] || []).sort((a, b) => b.pts - a.pts);
       const badge = ['👑','🥈','🥉'][p.rank - 1] || '';
+      const anyPlayed = list.some(t => t.gp > 0);
+      // (pts / gp) × GROUP_GAMES per team, summed and rounded once for the owner total
+      const projTotal = anyPlayed
+        ? Math.round(list.reduce((sum, t) => sum + (t.gp > 0 ? (t.pts / t.gp) * GROUP_GAMES : 0), 0))
+        : null;
+      const projLine = projTotal !== null
+        ? '<div class="player-projected ' + cfg.c + '">📈 ~' + projTotal + ' pts projected end of group stage</div>'
+        : '';
       return '<div class="player-card">' +
         '<div class="player-header">' +
           '<div class="player-icon ' + cfg.bg + '">' + avatarHtml(cfg, p.name) + '</div>' +
           '<div class="player-info">' +
             '<h3>' + p.name + ' ' + badge + '</h3>' +
             '<div class="player-total ' + cfg.c + '">' + p.pts + ' pts (GD ' + (p.gd > 0 ? '+' : '') + p.gd + ') · ' + list.length + ' teams</div>' +
+            projLine +
           '</div>' +
         '</div>' +
         '<div class="teams-list">' +
-          list.map(t =>
-            '<div class="team-row">' +
+          list.map(t => {
+            const proj = t.gp > 0 ? Math.round((t.pts / t.gp) * GROUP_GAMES) : null;
+            const projSpan = proj !== null ? '<span class="team-proj">→ ~' + proj + '</span>' : '';
+            return '<div class="team-row">' +
               (t.flag ? '<img class="team-flag" src="' + t.flag + '" alt="" onerror="this.style.display=\'none\'">' : '') +
               '<span class="team-name">' + withRank(t.name) + '</span>' +
               '<span class="team-record">' + t.rec + '</span>' +
               '<span class="team-pts ' + cfg.c + '">' + t.pts + '</span>' +
-            '</div>'
-          ).join('') +
+              projSpan +
+            '</div>';
+          }).join('') +
         '</div>' +
       '</div>';
     }).join('') + '</div>';
@@ -1265,8 +1283,17 @@ async function render() {
   document.getElementById('lastUpdated').textContent =
     'Updated ' + new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
+  // Projected group stage totals: (pts/gp) × GROUP_GAMES per team, summed per owner
+  const projectedTotals = {};
+  for (const [owner, list] of Object.entries(teams)) {
+    const anyPlayed = list.some(t => t.gp > 0);
+    projectedTotals[owner] = anyPlayed
+      ? Math.round(list.reduce((s, t) => s + (t.gp > 0 ? (t.pts / t.gp) * GROUP_GAMES : 0), 0))
+      : null;
+  }
+
   app.innerHTML =
-    renderPodium(knockoutRanked, knockoutStarted) +
+    renderPodium(knockoutRanked, knockoutStarted, projectedTotals) +
     renderSideBets(ranked) +
     renderLiveScores(
       todayEvents,
@@ -2386,9 +2413,7 @@ function setPlayer(name) {
   renderPredictionsEntry();
   renderBanter();
   if (name) syncAllLocalBests();
-  if (document.getElementById('gameLeaderboard')?.classList.contains('open')) {
-    renderGameLeaderboard();
-  }
+  renderGameLeaderboard();
 }
 
 function renderPredictPicker() {
@@ -2456,13 +2481,6 @@ function renderGameLeaderboard() {
       : '<span class="gl-player">No scores yet</span>';
     return '<div class="gl-row"><div class="gl-game-title">' + g.label + '</div><div class="gl-players">' + playersHtml + '</div></div>';
   }).join('');
-}
-
-function toggleGameLeaderboard(e) {
-  const el = document.getElementById('gameLeaderboard');
-  const open = el.classList.toggle('open');
-  e.target.textContent = open ? '▴' : '▾';
-  if (open) renderGameLeaderboard();
 }
 
 function togglePredictHistory(e) {
@@ -2700,15 +2718,14 @@ if (firebaseReady) {
   });
   gameScoresRef.on('value', snap => {
     gameScoresData = snap.val() || {};
-    if (document.getElementById('gameLeaderboard')?.classList.contains('open')) {
-      renderGameLeaderboard();
-    }
+    renderGameLeaderboard();
   });
 }
 
 renderPredictPicker();
 renderPredictionsLeaderboard();
 renderBanter();
+renderGameLeaderboard();
 syncAllLocalBests();
 </script>
 </body>
