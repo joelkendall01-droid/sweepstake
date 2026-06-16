@@ -345,6 +345,68 @@
       content: ''; position: absolute; top: 50%; left: -19px; width: 19px; height: 2px;
       background: var(--border);
     }
+
+    /* ── Mobile ─────────────────────────────────────────────────────────── */
+    @media (max-width: 500px) {
+      .header { padding: 20px 14px 16px; }
+      .header h1 { font-size: 20px; }
+      .subtitle { font-size: 13px; }
+      .theme-toggle { top: 12px; right: 12px; width: 30px; height: 30px; font-size: 14px; }
+      .sound-toggle { top: 12px; right: 48px; width: 30px; height: 30px; font-size: 14px; }
+      .header-player { margin-top: 10px; }
+
+      .tabs { gap: 4px; padding: 0 10px; margin-bottom: 12px; }
+      .tab { padding: 9px 4px; font-size: 11px; }
+
+      .container { padding: 16px 12px 40px; }
+
+      /* Podium — scale down block heights so it doesn't dominate the screen */
+      .podium-points { font-size: 26px; }
+      .podium-name { font-size: 15px; }
+      .rank-1 .podium-block { height: 72px; }
+      .rank-2 .podium-block { height: 52px; }
+      .rank-3 .podium-block { height: 38px; }
+      .podium-avatar { width: 52px; height: 52px; }
+
+      /* Prizes — 2 cols instead of 3 */
+      .prizes { grid-template-columns: repeat(2, 1fr); }
+
+      /* Match sub-tabs — allow wrap so they don't overflow */
+      .subtabs { flex-wrap: wrap; }
+
+      /* Predictions — predict-wrap already inside .container; strip its side padding */
+      .predict-wrap { padding: 0 0 28px; }
+
+      /* Banter input — 16px prevents iOS auto-zoom */
+      .banter-input { font-size: 16px; }
+
+      /* Team breakdown — hide projection on very narrow screens to stop row overflow */
+      .team-proj { display: none; }
+
+      /* Match cards — slightly tighter */
+      .match-card { padding: 8px 10px; }
+      .match-teams { font-size: 12px; }
+      .match-score { font-size: 13px; min-width: 38px; }
+
+      /* Kickoff banner */
+      .kickoff-banner { padding: 8px 10px; }
+      .kickoff-banner .kickoff-time { font-size: 14px; }
+
+      /* Game leaderboard players wrap nicely */
+      .gl-players { gap: 8px; }
+
+      /* History picks allow wrap */
+      .history-picks { gap: 6px; }
+
+      /* Knockout list matches */
+      .knockout-match { font-size: 12px; padding: 8px 10px; }
+    }
+
+    @media (max-width: 360px) {
+      .header h1 { font-size: 17px; }
+      .tab { font-size: 10px; }
+      .prizes { grid-template-columns: 1fr; }
+    }
   </style>
   <script>
     (function() {
@@ -360,7 +422,7 @@
   <button class="theme-toggle" id="themeToggle" onclick="toggleTheme()">🌙</button>
   <button class="sound-toggle" id="soundToggle" onclick="toggleSound()">🔊</button>
   <h1>⚽ World Cup <span>2026</span> Sweepstakes</h1>
-  <div class="subtitle">Joel · Josh · Eleanor &nbsp;|&nbsp; Group Stage Tracker</div>
+  <div class="subtitle">Joel · Josh · Eleanor</div>
   <div class="meta">
     <span id="lastUpdated">Loading…</span>
     <button class="refresh-btn" onclick="render()">↻ Refresh</button>
@@ -1263,14 +1325,15 @@ async function render() {
   const todayEvents = liveResult.status === 'fulfilled' ? (liveResult.value.events || []) : [];
 
   let upcomingEvents = [], completedEvents = [];
+  const todayIds = new Set(todayEvents.map(e => e.id));
   if (allResult.status === 'fulfilled') {
     const allEvents = allResult.value.events || [];
     const todayStr = new Date().toISOString().slice(0, 10);
     completedEvents = allEvents
-      .filter(e => e.status?.type?.completed)
+      .filter(e => e.status?.type?.completed && !todayIds.has(e.id))
       .sort((a, b) => new Date(b.date) - new Date(a.date));
     upcomingEvents = allEvents
-      .filter(e => !e.status?.type?.completed && e.date.slice(0, 10) > todayStr)
+      .filter(e => !e.status?.type?.completed && e.date.slice(0, 10) > todayStr && !todayIds.has(e.id))
       .sort((a, b) => new Date(a.date) - new Date(b.date))
       .slice(0, 10);
   }
@@ -1314,7 +1377,8 @@ async function render() {
 
   // ── Predictions / kickoff countdown support ─────────────────────────
   latestUpcoming = [...todayEvents, ...upcomingEvents].filter(e => !e.status?.type?.completed);
-  latestCompleted = completedEvents;
+  latestCompleted = [...todayEvents.filter(e => e.status?.type?.completed), ...completedEvents]
+    .sort((a, b) => new Date(b.date) - new Date(a.date));
   renderKickoffBanner(findNextSweepstakeMatch([...todayEvents, ...upcomingEvents]));
   renderPredictionsLeaderboard();
   if (document.getElementById('tabPredictions')?.classList.contains('active')) {
