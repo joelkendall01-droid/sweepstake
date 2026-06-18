@@ -791,6 +791,35 @@ setRank(56, ['curacao','curaçao']);
 setRank(57, ['bosnia & herzegovina','bosnia and herzegovina','bosnia-herzegovina','bosnia']);
 setRank(58, ['haiti']);
 
+function getRank(name) {
+  const key = name.toLowerCase().trim();
+  let rank = FIFA_RANK[key];
+  if (rank === undefined) {
+    for (const [k, v] of Object.entries(FIFA_RANK)) {
+      if (key.includes(k) || k.includes(key)) { rank = v; break; }
+    }
+  }
+  return rank !== undefined ? rank : null;
+}
+
+function rankExpectedPts(rank) {
+  if (!rank)      return 1.5; // unknown — neutral
+  if (rank <= 10) return 2.1; // elite
+  if (rank <= 20) return 1.8; // strong
+  if (rank <= 35) return 1.5; // mid-tier
+  return 1.1;                 // lower-ranked
+}
+
+// Expected pts using Elo-logistic model (same model FIFA uses internally)
+// Rank → Elo: rank 1 ≈ 1900, rank 48 ≈ 1200, linear
+function matchExpectedPts(rankA, rankB) {
+  const eloA = 1900 - ((rankA || 48) - 1) * 14.9;
+  const eloB = 1900 - ((rankB || 48) - 1) * 14.9;
+  const pWinRaw = 1 / (1 + Math.pow(10, (eloB - eloA) / 400));
+  const pDraw = Math.max(0.05, 0.25 * (1 - Math.abs(eloA - eloB) / 1000));
+  return pWinRaw * (1 - pDraw) * 3 + pDraw;
+}
+
 function withRank(name) {
   const key = name.toLowerCase().trim();
   let rank = FIFA_RANK[key];
@@ -1250,20 +1279,22 @@ function renderKnockoutTracker(matchesByRound) {
 
 const GROUP_GAMES = 3;
 
-function renderTeams(ranked, teams) {
+function renderTeams(ranked, teams, remainingOpponents) {
   return '<div class="section-title">Group Stage — Team Breakdown</div><div class="teams-grid">' +
     ranked.map(p => {
       const cfg  = PLAYER_CFG[p.name];
       const list = (teams[p.name] || []).sort((a, b) => b.pts - a.pts);
       const badge = ['👑','🥈','🥉'][p.rank - 1] || '';
       const anyPlayed = list.some(t => t.gp > 0);
-      // (pts / gp) × GROUP_GAMES per team, summed and rounded once for the owner total
-      const projTotal = anyPlayed
-        ? Math.round(list.reduce((sum, t) => sum + (t.gp > 0 ? (t.pts / t.gp) * GROUP_GAMES : 0), 0))
-        : null;
-      const projLine = projTotal !== null
-        ? '<div class="player-projected ' + cfg.c + '">📈 ~' + projTotal + ' pts projected end of group stage</div>'
-        : '';
+      // Fixture-aware projection: actual pts + expected pts vs known remaining opponents
+      const projTotal = Math.round(list.reduce((sum, t) => {
+        const rankT = getRank(t.name);
+        const opps = (remainingOpponents || {})[t.name] || [];
+        const knownExp = opps.reduce((x, opp) => x + matchExpectedPts(rankT, getRank(opp)), 0);
+        const unknownGames = Math.max(0, (GROUP_GAMES - t.gp) - opps.length);
+        return sum + Math.min(GROUP_GAMES * 3, t.pts + knownExp + unknownGames * rankExpectedPts(rankT));
+      }, 0));
+      const projLine = '<div class="player-projected ' + cfg.c + '">📈 ~' + projTotal + ' pts projected (FIFA rank)</div>';
       return '<div class="player-card">' +
         '<div class="player-header">' +
           '<div class="player-icon ' + cfg.bg + '">' + avatarHtml(cfg, p.name) + '</div>' +
@@ -1275,14 +1306,11 @@ function renderTeams(ranked, teams) {
         '</div>' +
         '<div class="teams-list">' +
           list.map(t => {
-            const proj = t.gp > 0 ? Math.round((t.pts / t.gp) * GROUP_GAMES) : null;
-            const projSpan = proj !== null ? '<span class="team-proj">→ ~' + proj + '</span>' : '';
             return '<div class="team-row">' +
               (t.flag ? '<img class="team-flag" src="' + t.flag + '" alt="" onerror="this.style.display=\'none\'">' : '') +
               '<span class="team-name">' + withRank(t.name) + '</span>' +
               '<span class="team-record">' + t.rec + '</span>' +
               '<span class="team-pts ' + cfg.c + '">' + t.pts + '</span>' +
-              projSpan +
             '</div>';
           }).join('') +
         '</div>' +
@@ -1324,7 +1352,7 @@ async function render() {
 
   const todayEvents = liveResult.status === 'fulfilled' ? (liveResult.value.events || []) : [];
 
-  let upcomingEvents = [], completedEvents = [];
+  let upcomingEvents = [], completedEvents = [], remainingOpponents = {};
   const todayIds = new Set(todayEvents.map(e => e.id));
   if (allResult.status === 'fulfilled') {
     const allEvents = allResult.value.events || [];
@@ -1336,6 +1364,15 @@ async function render() {
       .filter(e => !e.status?.type?.completed && e.date.slice(0, 10) > todayStr && !todayIds.has(e.id))
       .sort((a, b) => new Date(a.date) - new Date(b.date))
       .slice(0, 10);
+    // Build map of team → remaining opponents for fixture-aware projection
+    allEvents.filter(e => !e.status?.type?.completed).forEach(e => {
+      const comps = e.competitions?.[0]?.competitors || [];
+      const homeN = comps.find(c => c.homeAway === 'home')?.team?.displayName;
+      const awayN = comps.find(c => c.homeAway === 'away')?.team?.displayName;
+      if (!homeN || !awayN) return;
+      (remainingOpponents[homeN] = remainingOpponents[homeN] || []).push(awayN);
+      (remainingOpponents[awayN] = remainingOpponents[awayN] || []).push(homeN);
+    });
   }
 
   const oddsEvents = [...todayEvents, ...upcomingEvents];
@@ -1346,13 +1383,16 @@ async function render() {
   document.getElementById('lastUpdated').textContent =
     'Updated ' + new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
-  // Projected group stage totals: (pts/gp) × GROUP_GAMES per team, summed per owner
+  // Projected group stage totals: actual pts + fixture-aware expected pts for remaining games
   const projectedTotals = {};
   for (const [owner, list] of Object.entries(teams)) {
-    const anyPlayed = list.some(t => t.gp > 0);
-    projectedTotals[owner] = anyPlayed
-      ? Math.round(list.reduce((s, t) => s + (t.gp > 0 ? (t.pts / t.gp) * GROUP_GAMES : 0), 0))
-      : null;
+    projectedTotals[owner] = Math.round(list.reduce((s, t) => {
+      const rankT = getRank(t.name);
+      const opps = remainingOpponents[t.name] || [];
+      const knownExp = opps.reduce((x, opp) => x + matchExpectedPts(rankT, getRank(opp)), 0);
+      const unknownGames = Math.max(0, (GROUP_GAMES - t.gp) - opps.length);
+      return s + Math.min(GROUP_GAMES * 3, t.pts + knownExp + unknownGames * rankExpectedPts(rankT));
+    }, 0));
   }
 
   app.innerHTML =
@@ -1365,7 +1405,7 @@ async function render() {
       upcomingEvents,
       completedEvents
     ) +
-    renderTeams(ranked, teams) +
+    renderTeams(ranked, teams, remainingOpponents) +
     (goldenBootResult.status === 'fulfilled' ? renderGoldenBoot(goldenBootResult.value) : '') +
     renderKnockoutPrizes(knockoutRanked, knockoutStarted) +
     (knockoutResult.status === 'fulfilled'
@@ -2330,7 +2370,7 @@ async function fetchGoldenBoot() {
 }
 
 function renderGoldenBoot(leaders) {
-  if (!leaders || !leaders.length) return '';
+  if (!leaders || !leaders.length) return '<div class="section-title">⚽ Golden Boot — Top Scorers</div><div class="empty-box">No scorers recorded yet — check back after matches kick off.</div>';
   return '<div class="section-title">⚽ Golden Boot — Top Scorers</div><div class="goldenboot-list">' +
     leaders.map((l, i) => {
       const owner = findOwner(l.team);
