@@ -322,6 +322,30 @@
     .banter-input { flex: 1; padding: 10px 12px; border: 1px solid var(--border); border-radius: 8px; font-size: 13px; background: var(--card-bg); color: var(--text); }
     .banter-send { padding: 10px 18px; border-radius: 8px; border: none; background: linear-gradient(135deg, #667eea, #764ba2); color: white; font-weight: 800; font-size: 12px; cursor: pointer; }
 
+    /* Knockout team breakdown */
+    .ko-eliminated { opacity: 0.4; }
+    .ko-eliminated .team-name { text-decoration: line-through; }
+    .ko-round-badge { font-size: 10px; font-weight: 800; color: var(--muted); background: var(--row-alt); border-radius: 4px; padding: 1px 5px; margin-right: 6px; }
+
+    /* Frozen group stage standings */
+    .group-frozen-wrap { display: flex; flex-direction: column; gap: 8px; margin-bottom: 28px; }
+    .group-frozen-row { display: flex; align-items: center; gap: 10px; background: var(--card-bg); border-radius: 10px; padding: 10px 14px; box-shadow: 0 1px 4px var(--card-shadow-sm); }
+    .group-frozen-medal { font-size: 20px; width: 28px; text-align: center; flex-shrink: 0; }
+    .group-frozen-name { flex: 1; font-weight: 800; font-size: 15px; }
+    .group-frozen-pts { font-weight: 800; font-size: 14px; color: var(--muted-2); }
+
+    /* Show more/less toggle */
+    .show-more-btn { display: block; margin: 8px auto 0; background: none; border: 1px solid var(--border); color: var(--muted-2); border-radius: 8px; padding: 6px 20px; font-size: 12px; font-weight: 700; cursor: pointer; transition: background .15s; }
+    .show-more-btn:hover { background: var(--card-bg); }
+
+    /* Penalty winner picker (knockout predictions) */
+    .predict-pens { display: none; align-items: center; justify-content: center; gap: 8px; margin-top: 8px; flex-wrap: wrap; }
+    .predict-pens.show { display: flex; }
+    .predict-pens-label { font-size: 11px; color: var(--muted); font-weight: 700; }
+    .predict-pen-btn { display: flex; align-items: center; gap: 5px; cursor: pointer; padding: 5px 12px; border-radius: 8px; background: var(--card-bg); box-shadow: 0 1px 4px var(--card-shadow-sm); font-size: 12px; font-weight: 700; border: 2px solid transparent; transition: border-color .15s; }
+    .predict-pen-btn:has(input:checked) { border-color: #667eea; color: #667eea; }
+    .predict-pen-btn input[type="radio"] { display: none; }
+
     /* Knockout bracket */
     .bracket-scroll { overflow-x: auto; padding-bottom: 8px; margin-bottom: 16px; }
     .bracket-row { display: grid; grid-auto-flow: column; column-gap: 38px; row-gap: 12px; min-width: max-content; padding: 4px 20px; }
@@ -432,8 +456,9 @@
 
 <div class="tabs">
   <div class="tab active" id="tabStandings" onclick="switchTab('standings')">📊 Standings</div>
-  <div class="tab" id="tabGames" onclick="switchTab('games')">🎮 Games</div>
   <div class="tab" id="tabPredictions" onclick="switchTab('predictions')">🔮 Predictions</div>
+  <div class="tab" id="tabPrizes" onclick="switchTab('prizes')">🏅 Prizes</div>
+  <div class="tab" id="tabGames" onclick="switchTab('games')">🎮 Games</div>
 </div>
 
 <div class="container tab-content active" id="standingsTab">
@@ -468,6 +493,10 @@
     <div class="section-title">⚽ Predict Upcoming Matches</div>
     <div id="predictionsEntry"></div>
   </div>
+</div>
+
+<div class="container tab-content" id="prizesTab">
+  <div id="prizesApp"></div>
 </div>
 
 <div class="tab-content" id="gamesTab">
@@ -730,7 +759,7 @@ const RANK_LABELS = ['🥇 1st', '🥈 2nd', '🥉 3rd'];
 // ── Knockout round definitions (fixed 2026 World Cup schedule) ────────
 // depth = "how far a team has reached" once they appear in / win a match in that round.
 const ROUNDS = [
-  { key: 'r32',   label: 'Round of 32',       start: '2026-06-28T00:00Z', end: '2026-07-04T12:00Z', depth: 1 },
+  { key: 'r32',   label: 'Round of 32',       start: '2026-06-29T00:00Z', end: '2026-07-04T12:00Z', depth: 1 },
   { key: 'r16',   label: 'Round of 16',       start: '2026-07-04T12:00Z', end: '2026-07-08T12:00Z', depth: 2 },
   { key: 'qf',    label: 'Quarter-Finals',    start: '2026-07-08T12:00Z', end: '2026-07-13T00:00Z', depth: 3 },
   { key: 'sf',    label: 'Semi-Finals',       start: '2026-07-13T00:00Z', end: '2026-07-17T00:00Z', depth: 4 },
@@ -882,7 +911,7 @@ function formatFractionalOdds(american) {
   return (num / g) + '/' + (den / g);
 }
 
-const KNOCKOUT_DATES = '20260628-20260719';
+const KNOCKOUT_DATES = '20260629-20260719';
 const ALL_DATES = '20260611-20260719';
 
 // ── Parse ────────────────────────────────────────────────────────────
@@ -996,7 +1025,7 @@ function formatMatchStatus(event) {
 }
 
 // ── Render ───────────────────────────────────────────────────────────
-function renderPodium(ranked, knockoutStarted, projectedTotals) {
+function renderPodium(ranked, knockoutStarted, projectedTotals, gamesRemainingMap) {
   const order   = ranked.length >= 3 ? [ranked[1], ranked[0], ranked[2]] : ranked;
   const rankCls = ['rank-2', 'rank-1', 'rank-3'];
   const blocks  = ['🥈', '🏆', '🥉'];
@@ -1005,8 +1034,13 @@ function renderPodium(ranked, knockoutStarted, projectedTotals) {
     order.map((p, i) => {
       const cfg  = PLAYER_CFG[p.name];
       const proj = projectedTotals?.[p.name];
-      const projHtml = (proj !== null && proj !== undefined)
+      const gamesLeft = gamesRemainingMap?.[p.name];
+      const projHtml = (!knockoutStarted && proj !== null && proj !== undefined)
         ? '<div class="podium-proj">📈 ~' + proj + ' projected</div>'
+        : '';
+      const groupStageActive = new Date() < new Date('2026-06-29');
+      const gamesHtml = (groupStageActive && gamesLeft != null)
+        ? '<div class="podium-proj">' + gamesLeft + ' games left</div>'
         : '';
       return '<div class="podium-item ' + rankCls[i] + '">' +
         '<div class="podium-avatar ' + cfg.bg + '">' + avatarHtml(cfg, p.name) + '</div>' +
@@ -1014,6 +1048,7 @@ function renderPodium(ranked, knockoutStarted, projectedTotals) {
         '<div class="podium-points ' + cfg.c + '">' + p.pts + '</div>' +
         '<div class="podium-pts-label">pts</div>' +
         projHtml +
+        gamesHtml +
         '<div class="podium-block">' + blocks[i] + '</div>' +
         '</div>';
     }).join('') + '</div>';
@@ -1169,25 +1204,42 @@ function switchMatchTab(el, id) {
   const row = el.parentElement;
   row.querySelectorAll('.subtab').forEach(t => t.classList.remove('active'));
   el.classList.add('active');
-  row.parentElement.querySelectorAll('.match-tab-content').forEach(c => c.classList.toggle('active', c.id === id));
+  [...row.parentElement.children].filter(c => c.classList.contains('match-tab-content')).forEach(c => c.classList.toggle('active', c.id === id));
 }
 
 function renderLiveScores(todayEvents, todayError, oddsMap, upcomingEvents, completedEvents) {
-  const html = '<div class="section-title">Live & Today\'s Matches</div>' +
-    '<div class="subtabs">' +
-      '<div class="subtab active" onclick="switchMatchTab(this,\'mToday\')">Today</div>' +
-      '<div class="subtab" onclick="switchMatchTab(this,\'mUpcoming\')">Upcoming</div>' +
-      '<div class="subtab" onclick="switchMatchTab(this,\'mCompleted\')">Completed</div>' +
-    '</div>';
+  const html = '<div class="section-title">Live & Today\'s Matches</div>';
 
   const todayHtml = todayError
     ? '<div class="warn-box">⚠️ Could not load today\'s matches: ' + todayError + '</div>'
     : renderMatchesList(todayEvents, oddsMap, 'No matches scheduled today');
 
-  return html +
+  const UPCOMING_INIT = 10;
+  const upcomingHtml = upcomingEvents.length <= UPCOMING_INIT
+    ? renderMatchesList(upcomingEvents, oddsMap, 'No upcoming matches found')
+    : renderMatchesList(upcomingEvents.slice(0, UPCOMING_INIT), oddsMap, '') +
+      '<div id="upcomingMore" style="display:none">' +
+        renderMatchesList(upcomingEvents.slice(UPCOMING_INIT), oddsMap, '') +
+      '</div>' +
+      '<button class="show-more-btn" data-total="' + upcomingEvents.length + '" onclick="toggleUpcoming(this)">Show all ' + upcomingEvents.length + ' upcoming ▾</button>';
+
+  return html + '<div class="tab-group">' +
+    '<div class="subtabs">' +
+      '<div class="subtab active" onclick="switchMatchTab(this,\'mToday\')">Today</div>' +
+      '<div class="subtab" onclick="switchMatchTab(this,\'mUpcoming\')">Upcoming</div>' +
+      '<div class="subtab" onclick="switchMatchTab(this,\'mCompleted\')">Completed</div>' +
+    '</div>' +
     '<div class="match-tab-content active" id="mToday">' + todayHtml + '</div>' +
-    '<div class="match-tab-content" id="mUpcoming">' + renderMatchesList(upcomingEvents, oddsMap, 'No upcoming matches found') + '</div>' +
-    '<div class="match-tab-content" id="mCompleted">' + renderMatchesList(completedEvents, {}, 'No completed matches yet') + '</div>';
+    '<div class="match-tab-content" id="mUpcoming">' + upcomingHtml + '</div>' +
+    '<div class="match-tab-content" id="mCompleted">' + renderMatchesList(completedEvents, {}, 'No completed matches yet') + '</div>' +
+    '</div>';
+}
+
+function toggleUpcoming(btn) {
+  const more = document.getElementById('upcomingMore');
+  const expanded = more.style.display !== 'none';
+  more.style.display = expanded ? 'none' : 'block';
+  btn.textContent = expanded ? 'Show all ' + btn.dataset.total + ' upcoming ▾' : 'Show less ▴';
 }
 
 function knockoutTeamLabel(c) {
@@ -1260,6 +1312,72 @@ function renderKnockoutBracket(roundsWithMatches, matchesByRound) {
   return '<div class="bracket-scroll"><div class="bracket-row" style="' + gridStyle + '">' + cols + thirdPlaceHtml + '</div></div>';
 }
 
+function renderKnockoutBreakdown(ranked, teams, matchesByRound) {
+  const SHORT = { r32:'R32', r16:'R16', qf:'QF', sf:'SF', final:'Final', third:'3rd' };
+  const koStatus = {};
+  for (const [roundKey, matches] of Object.entries(matchesByRound)) {
+    const round = ROUNDS.find(r => r.key === roundKey);
+    if (!round) continue;
+    for (const m of matches) {
+      const done = m.status?.type?.completed;
+      for (const c of m.competitors) {
+        if (!c.isReal) continue;
+        const prev = koStatus[c.name];
+        if (!prev || round.depth > prev.depth) {
+          koStatus[c.name] = { label: round.label, short: SHORT[roundKey] || roundKey, depth: round.depth, eliminated: done && !c.winner };
+        }
+      }
+    }
+  }
+
+  if (!Object.keys(koStatus).length) return '<div class="section-title">Knockout Stage — Team Breakdown</div><div class="empty-box">Knockout bracket not populated yet</div>';
+
+  return '<div class="section-title">Knockout Stage — Team Breakdown</div><div class="teams-grid">' +
+    ranked.map(p => {
+      const cfg = PLAYER_CFG[p.name];
+      const badge = ['👑','🥈','🥉'][p.rank - 1] || '';
+      const koTeams = (teams[p.name] || []).filter(t => koStatus[t.name]);
+      const active = koTeams.filter(t => !koStatus[t.name].eliminated).sort((a, b) => koStatus[b.name].depth - koStatus[a.name].depth);
+      const elim   = koTeams.filter(t =>  koStatus[t.name].eliminated).sort((a, b) => koStatus[b.name].depth - koStatus[a.name].depth);
+
+      return '<div class="player-card">' +
+        '<div class="player-header">' +
+          '<div class="player-icon ' + cfg.bg + '">' + avatarHtml(cfg, p.name) + '</div>' +
+          '<div class="player-info">' +
+            '<h3>' + p.name + ' ' + badge + '</h3>' +
+            '<div class="player-total ' + cfg.c + '">' + active.length + ' active · ' + koTeams.length + ' teams in knockout</div>' +
+          '</div>' +
+        '</div>' +
+        '<div class="teams-list">' +
+          [...active, ...elim].map(t => {
+            const st = koStatus[t.name];
+            return '<div class="team-row' + (st.eliminated ? ' ko-eliminated' : '') + '">' +
+              (t.flag ? '<img class="team-flag" src="' + t.flag + '" alt="" onerror="this.style.display=\'none\'">' : '') +
+              '<span class="team-name">' + t.name + '</span>' +
+              '<span class="ko-round-badge">' + st.short + '</span>' +
+              '<span class="team-pts ' + (st.eliminated ? '' : cfg.c) + '">' + (st.eliminated ? '❌' : '✓') + '</span>' +
+            '</div>';
+          }).join('') +
+        '</div>' +
+      '</div>';
+    }).join('') + '</div>';
+}
+
+function renderGroupStageFrozen(ranked) {
+  const medals = ['🥇','🥈','🥉'];
+  return '<div class="section-title">Group Stage — Final Standings</div>' +
+    '<div class="group-frozen-wrap">' +
+    ranked.map((p, i) => {
+      const cfg = PLAYER_CFG[p.name];
+      return '<div class="group-frozen-row ' + cfg.border + '">' +
+        '<span class="group-frozen-medal">' + (medals[i] || (i + 1) + '.') + '</span>' +
+        '<div class="owner-badge ' + cfg.bg + '">' + avatarHtml(cfg, p.name) + '</div>' +
+        '<span class="group-frozen-name ' + cfg.c + '">' + p.name + '</span>' +
+        '<span class="group-frozen-pts">' + p.pts + ' pts</span>' +
+      '</div>';
+    }).join('') + '</div>';
+}
+
 function renderKnockoutTracker(matchesByRound) {
   const html = '<div class="section-title">Knockout Tracker</div>';
   const roundsWithMatches = ROUNDS.filter(r => (matchesByRound[r.key] || []).length);
@@ -1268,13 +1386,14 @@ function renderKnockoutTracker(matchesByRound) {
     return html + '<div class="empty-box">Knockout schedule not available yet</div>';
   }
 
-  return html +
+  return html + '<div class="tab-group">' +
     '<div class="subtabs">' +
-      '<div class="subtab active" onclick="switchMatchTab(this,\'koList\')">📋 List</div>' +
-      '<div class="subtab" onclick="switchMatchTab(this,\'koBracket\')">🌳 Bracket</div>' +
+      '<div class="subtab" onclick="switchMatchTab(this,\'koList\')">📋 List</div>' +
+      '<div class="subtab active" onclick="switchMatchTab(this,\'koBracket\')">🌳 Bracket</div>' +
     '</div>' +
-    '<div class="match-tab-content active" id="koList">' + renderKnockoutTrackerList(roundsWithMatches, matchesByRound) + '</div>' +
-    '<div class="match-tab-content" id="koBracket">' + renderKnockoutBracket(roundsWithMatches, matchesByRound) + '</div>';
+    '<div class="match-tab-content" id="koList">' + renderKnockoutTrackerList(roundsWithMatches, matchesByRound) + '</div>' +
+    '<div class="match-tab-content active" id="koBracket">' + renderKnockoutBracket(roundsWithMatches, matchesByRound) + '</div>' +
+    '</div>';
 }
 
 const GROUP_GAMES = 3;
@@ -1295,12 +1414,13 @@ function renderTeams(ranked, teams, remainingOpponents) {
         return sum + Math.min(GROUP_GAMES * 3, t.pts + knownExp + unknownGames * rankExpectedPts(rankT));
       }, 0));
       const projLine = '<div class="player-projected ' + cfg.c + '">📈 ~' + projTotal + ' pts projected (FIFA rank)</div>';
+      const gamesRemaining = list.reduce((s, t) => s + (GROUP_GAMES - t.gp), 0);
       return '<div class="player-card">' +
         '<div class="player-header">' +
           '<div class="player-icon ' + cfg.bg + '">' + avatarHtml(cfg, p.name) + '</div>' +
           '<div class="player-info">' +
             '<h3>' + p.name + ' ' + badge + '</h3>' +
-            '<div class="player-total ' + cfg.c + '">' + p.pts + ' pts (GD ' + (p.gd > 0 ? '+' : '') + p.gd + ') · ' + list.length + ' teams</div>' +
+            '<div class="player-total ' + cfg.c + '">' + p.pts + ' pts (GD ' + (p.gd > 0 ? '+' : '') + p.gd + ') · ' + list.length + ' teams · ' + gamesRemaining + ' games left</div>' +
             projLine +
           '</div>' +
         '</div>' +
@@ -1345,7 +1465,7 @@ async function render() {
     ({ teamDepth, matchesByRound } = parseKnockout(knockoutResult.value));
   }
 
-  const knockoutStarted = Object.values(teamDepth).some(d => d > 0);
+  const knockoutStarted = new Date() >= new Date('2026-06-29T00:00Z');
   const knockoutRanked = Object.keys(totals)
     .sort((a, b) => compareOwners(a, b, teams, teamDepth, totals, gds))
     .map((name, i) => ({ name, pts: totals[name], rank: i + 1 }));
@@ -1362,8 +1482,7 @@ async function render() {
       .sort((a, b) => new Date(b.date) - new Date(a.date));
     upcomingEvents = allEvents
       .filter(e => !e.status?.type?.completed && e.date.slice(0, 10) > todayStr && !todayIds.has(e.id))
-      .sort((a, b) => new Date(a.date) - new Date(b.date))
-      .slice(0, 10);
+      .sort((a, b) => new Date(a.date) - new Date(b.date));
     // Build map of team → remaining opponents for fixture-aware projection
     allEvents.filter(e => !e.status?.type?.completed).forEach(e => {
       const comps = e.competitions?.[0]?.competitors || [];
@@ -1375,7 +1494,7 @@ async function render() {
     });
   }
 
-  const oddsEvents = [...todayEvents, ...upcomingEvents];
+  const oddsEvents = [...todayEvents, ...upcomingEvents.slice(0, 10)];
   const oddsResults = await Promise.all(oddsEvents.map(e => fetchOdds(e.id)));
   const oddsMap = {};
   oddsEvents.forEach((e, i) => { oddsMap[e.id] = oddsResults[i]; });
@@ -1383,8 +1502,8 @@ async function render() {
   document.getElementById('lastUpdated').textContent =
     'Updated ' + new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
-  // Projected group stage totals: actual pts + fixture-aware expected pts for remaining games
-  const projectedTotals = {};
+  // Projected group stage totals + games remaining per owner
+  const projectedTotals = {}, gamesRemainingMap = {};
   for (const [owner, list] of Object.entries(teams)) {
     projectedTotals[owner] = Math.round(list.reduce((s, t) => {
       const rankT = getRank(t.name);
@@ -1393,27 +1512,59 @@ async function render() {
       const unknownGames = Math.max(0, (GROUP_GAMES - t.gp) - opps.length);
       return s + Math.min(GROUP_GAMES * 3, t.pts + knownExp + unknownGames * rankExpectedPts(rankT));
     }, 0));
+    gamesRemainingMap[owner] = list.reduce((s, t) => s + (GROUP_GAMES - t.gp), 0);
   }
 
+  const liveScoresHtml = renderLiveScores(
+    todayEvents,
+    liveResult.status === 'fulfilled' ? null : liveResult.reason.message,
+    oddsMap,
+    upcomingEvents,
+    completedEvents
+  );
+  const knockoutTrackerHtml = knockoutResult.status === 'fulfilled'
+    ? renderKnockoutTracker(matchesByRound)
+    : '<div class="warn-box">⚠️ Could not load knockout schedule: ' + knockoutResult.reason.message + '</div>';
+  const unmatchedHtml = unmatched.length
+    ? '<div class="warn-box">⚠️ Unmatched teams: ' + unmatched.join(', ') + '</div>'
+    : '';
+
+  const koBreakdownInner = knockoutResult.status === 'fulfilled'
+    ? renderKnockoutBreakdown(knockoutRanked, teams, matchesByRound)
+    : '<div class="empty-box">Knockout bracket not populated yet</div>';
+
+  const groupInner = renderTeams(ranked, teams, remainingOpponents).replace(/<div class="section-title">[^<]*<\/div>/, '') +
+    (knockoutStarted ? renderGroupStageFrozen(ranked) : '');
+  const hasKnockoutTeams = Object.values(teamDepth).some(d => d > 0);
+  const koInner = hasKnockoutTeams
+    ? koBreakdownInner.replace(/<div class="section-title">[^<]*<\/div>/, '')
+    : '<div class="empty-box">No teams have qualified yet — check back soon.</div>';
+
+  const breakdownTabsHtml =
+    '<div class="section-title">Team Breakdown</div>' +
+    '<div class="tab-group">' +
+      '<div class="subtabs">' +
+        '<div class="subtab' + (knockoutStarted ? '' : ' active') + '" onclick="switchMatchTab(this,\'bdGroup\')">👥 Group Stage</div>' +
+        '<div class="subtab' + (knockoutStarted ? ' active' : '') + '" onclick="switchMatchTab(this,\'bdKnockout\')">🏆 Knockout Stage</div>' +
+      '</div>' +
+      '<div class="match-tab-content' + (knockoutStarted ? '' : ' active') + '" id="bdGroup">' + groupInner + '</div>' +
+      '<div class="match-tab-content' + (knockoutStarted ? ' active' : '') + '" id="bdKnockout">' + koInner + '</div>' +
+    '</div>';
+
   app.innerHTML =
-    renderPodium(knockoutRanked, knockoutStarted, projectedTotals) +
-    renderSideBets(ranked) +
-    renderLiveScores(
-      todayEvents,
-      liveResult.status === 'fulfilled' ? null : liveResult.reason.message,
-      oddsMap,
-      upcomingEvents,
-      completedEvents
-    ) +
-    renderTeams(ranked, teams, remainingOpponents) +
+    renderPodium(knockoutRanked, knockoutStarted, projectedTotals, gamesRemainingMap) +
+    liveScoresHtml +
+    breakdownTabsHtml +
     (goldenBootResult.status === 'fulfilled' ? renderGoldenBoot(goldenBootResult.value) : '') +
-    renderKnockoutPrizes(knockoutRanked, knockoutStarted) +
-    (knockoutResult.status === 'fulfilled'
-      ? renderKnockoutTracker(matchesByRound)
-      : '<div class="warn-box">⚠️ Could not load knockout schedule: ' + knockoutResult.reason.message + '</div>') +
-    (unmatched.length
-      ? '<div class="warn-box">⚠️ Unmatched teams: ' + unmatched.join(', ') + '</div>'
-      : '');
+    knockoutTrackerHtml +
+    unmatchedHtml;
+
+  const prizesApp = document.getElementById('prizesApp');
+  if (prizesApp) {
+    prizesApp.innerHTML =
+      renderKnockoutPrizes(knockoutRanked, knockoutStarted) +
+      renderSideBets(ranked);
+  }
 
   // ── Predictions / kickoff countdown support ─────────────────────────
   latestUpcoming = [...todayEvents, ...upcomingEvents].filter(e => !e.status?.type?.completed);
@@ -1555,12 +1706,10 @@ initFootballToy();
 
 // ── Tabs ─────────────────────────────────────────────────────────────
 function switchTab(name) {
-  document.getElementById('tabStandings').classList.toggle('active', name === 'standings');
-  document.getElementById('tabGames').classList.toggle('active', name === 'games');
-  document.getElementById('tabPredictions').classList.toggle('active', name === 'predictions');
-  document.getElementById('standingsTab').classList.toggle('active', name === 'standings');
-  document.getElementById('gamesTab').classList.toggle('active', name === 'games');
-  document.getElementById('predictionsTab').classList.toggle('active', name === 'predictions');
+  ['standings','predictions','prizes','games'].forEach(t => {
+    document.getElementById('tab' + t.charAt(0).toUpperCase() + t.slice(1))?.classList.toggle('active', name === t);
+    document.getElementById(t + 'Tab')?.classList.toggle('active', name === t);
+  });
   if (name === 'games') initKeepyUppy();
   if (name === 'predictions') { renderPredictPicker(); renderPredictionsEntry(); }
 }
@@ -2357,8 +2506,8 @@ async function fetchGoldenBoot() {
   const enriched = await Promise.all(leaders.map(async l => {
     try {
       const [athlete, team] = await Promise.all([
-        fetch(l.athlete.$ref).then(r => r.json()),
-        fetch(l.team.$ref).then(r => r.json()),
+        fetch(l.athlete.$ref.replace('http://', 'https://')).then(r => r.json()),
+        fetch(l.team.$ref.replace('http://', 'https://')).then(r => r.json()),
       ]);
       return { player: athlete.displayName, team: team.displayName, goals: l.value };
     } catch {
@@ -2594,12 +2743,23 @@ function togglePredictHistory(e) {
   if (open) renderPredictionsHistory();
 }
 
-function scorePrediction(pred, actualHome, actualAway) {
+function checkPenaltySection(id) {
+  const h = parseInt(document.getElementById('pi-home-' + id)?.value, 10);
+  const a = parseInt(document.getElementById('pi-away-' + id)?.value, 10);
+  const pp = document.getElementById('pp-' + id);
+  if (pp) pp.classList.toggle('show', !isNaN(h) && !isNaN(a) && h === a);
+}
+
+function scorePrediction(pred, actualHome, actualAway, actualPenWinner) {
   if (!pred) return 0;
-  if (pred.home === actualHome && pred.away === actualAway) return 3;
-  const sign = v => v > 0 ? 1 : (v < 0 ? -1 : 0);
-  if (sign(pred.home - pred.away) === sign(actualHome - actualAway)) return 1;
-  return 0;
+  let pts = 0;
+  if (pred.home === actualHome && pred.away === actualAway) pts = 3;
+  else {
+    const sign = v => v > 0 ? 1 : (v < 0 ? -1 : 0);
+    if (sign(pred.home - pred.away) === sign(actualHome - actualAway)) pts = 1;
+  }
+  if (pts > 0 && pred.penWinner && actualPenWinner && pred.penWinner === actualPenWinner) pts += 2;
+  return pts;
 }
 
 function renderPredictionsLeaderboard() {
@@ -2619,11 +2779,14 @@ function renderPredictionsLeaderboard() {
     const away = competitors.find(c => c.homeAway === 'away') || competitors[1];
     if (!home || !away || home.score == null || away.score == null) continue;
     const actualHome = Number(home.score), actualAway = Number(away.score);
+    const isKnockout = (event.date || '').slice(0, 10) >= '2026-06-29';
+    const actualPenWinner = (isKnockout && actualHome === actualAway)
+      ? (home.winner ? 'home' : away.winner ? 'away' : null) : null;
     const preds = predictionsData[event.id] || {};
     for (const player of Object.keys(PLAYER_CFG)) {
       const pred = preds[player];
       if (!pred) continue;
-      totals[player] += scorePrediction(pred, actualHome, actualAway);
+      totals[player] += scorePrediction(pred, actualHome, actualAway, actualPenWinner);
       counts[player]++;
     }
   }
@@ -2663,13 +2826,18 @@ function renderPredictionsHistory() {
     if (!pickers.length) continue;
 
     const actualHome = Number(home.score), actualAway = Number(away.score);
+    const isKnockout = (event.date || '').slice(0, 10) >= '2026-06-29';
+    const actualPenWinner = (isKnockout && actualHome === actualAway)
+      ? (home.winner ? 'home' : away.winner ? 'away' : null) : null;
     const picksHtml = pickers.map(player => {
       const pred = preds[player];
-      const pts = scorePrediction(pred, actualHome, actualAway);
+      const pts = scorePrediction(pred, actualHome, actualAway, actualPenWinner);
       const cfg = PLAYER_CFG[player];
+      const penStr = pred.penWinner
+        ? ' <span style="color:var(--muted)">(pens: ' + (pred.penWinner === 'home' ? home.team.displayName : away.team.displayName) + ')</span>' : '';
       return '<div class="history-pick"><b class="' + cfg.c + '">' + player + '</b> ' +
-        pred.home + '-' + pred.away +
-        '<span class="history-pick-pts pts-' + pts + '">' + pts + (pts === 1 ? ' pt' : ' pts') + '</span></div>';
+        pred.home + '-' + pred.away + penStr +
+        '<span class="history-pick-pts pts-' + Math.min(pts, 3) + '">' + pts + (pts === 1 ? ' pt' : ' pts') + '</span></div>';
     }).join('');
 
     rows.push('<div class="history-row">' +
@@ -2708,25 +2876,38 @@ function renderPredictionsEntry() {
         '<span>' + c.team.displayName + '</span>';
     };
 
+    const isKnockout = (event.date || '').slice(0, 10) >= '2026-06-29';
     let body;
     if (status.state !== 'pre') {
       const picks = Object.keys(PLAYER_CFG)
         .filter(p => preds[p])
-        .map(p => p + ': ' + preds[p].home + '-' + preds[p].away)
-        .join(' · ');
+        .map(p => {
+          const pr = preds[p];
+          let t = p + ': ' + pr.home + '-' + pr.away;
+          if (pr.penWinner) t += ' (pens: ' + (pr.penWinner === 'home' ? home.team.displayName : away.team.displayName) + ')';
+          return t;
+        }).join(' · ');
       body = '<div class="predict-locked">🔒 ' + status.text +
         '<div class="predict-picks">' + (picks || 'No predictions made') + '</div></div>';
     } else if (!currentPlayer) {
       body = '<div class="predict-locked">Pick a player above to predict this match</div>';
     } else {
       const mine = preds[currentPlayer] || {};
+      const drawSaved = mine.home !== undefined && mine.home === mine.away;
+      const penSection = isKnockout
+        ? '<div class="predict-pens' + (drawSaved ? ' show' : '') + '" id="pp-' + event.id + '">' +
+            '<span class="predict-pens-label">🥅 Pens:</span>' +
+            '<label class="predict-pen-btn"><input type="radio" name="pen-' + event.id + '" value="home"' + (mine.penWinner === 'home' ? ' checked' : '') + '> ' + home.team.displayName + '</label>' +
+            '<label class="predict-pen-btn"><input type="radio" name="pen-' + event.id + '" value="away"' + (mine.penWinner === 'away' ? ' checked' : '') + '> ' + away.team.displayName + '</label>' +
+          '</div>'
+        : '';
       body = '<div class="predict-inputs">' +
-        '<input type="number" min="0" max="20" class="predict-input" id="pi-home-' + event.id + '" value="' + (mine.home ?? '') + '">' +
+        '<input type="number" min="0" max="20" class="predict-input" id="pi-home-' + event.id + '" value="' + (mine.home ?? '') + '" oninput="' + (isKnockout ? 'checkPenaltySection(\'' + event.id + '\')' : '') + '">' +
         '<span>–</span>' +
-        '<input type="number" min="0" max="20" class="predict-input" id="pi-away-' + event.id + '" value="' + (mine.away ?? '') + '">' +
+        '<input type="number" min="0" max="20" class="predict-input" id="pi-away-' + event.id + '" value="' + (mine.away ?? '') + '" oninput="' + (isKnockout ? 'checkPenaltySection(\'' + event.id + '\')' : '') + '">' +
         '<button class="predict-save" onclick="savePrediction(\'' + event.id + '\')">Save</button>' +
         '<span class="predict-saved" id="ps-' + event.id + '"></span>' +
-      '</div>';
+      '</div>' + penSection;
     }
 
     return '<div class="predict-card">' +
@@ -2747,7 +2928,10 @@ function savePrediction(eventId) {
   const awayEl = document.getElementById('pi-away-' + eventId);
   const home = parseInt(homeEl.value, 10), away = parseInt(awayEl.value, 10);
   if (isNaN(home) || isNaN(away) || home < 0 || away < 0) return;
-  predictionsRef.child(eventId).child(currentPlayer).set({ home, away });
+  const penRadio = document.querySelector('input[name="pen-' + eventId + '"]:checked');
+  const data = { home, away };
+  if (penRadio && home === away) data.penWinner = penRadio.value;
+  predictionsRef.child(eventId).child(currentPlayer).set(data);
   const saved = document.getElementById('ps-' + eventId);
   if (saved) {
     saved.textContent = '✓ Saved';
