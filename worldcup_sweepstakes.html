@@ -458,6 +458,7 @@
   <div class="tab active" id="tabStandings" onclick="switchTab('standings')">📊 Standings</div>
   <div class="tab" id="tabPredictions" onclick="switchTab('predictions')">🔮 Predictions</div>
   <div class="tab" id="tabPrizes" onclick="switchTab('prizes')">🏅 Prizes</div>
+  <div class="tab" id="tabBanter" onclick="switchTab('banter')">🗣️ Banter</div>
   <div class="tab" id="tabGames" onclick="switchTab('games')">🎮 Games</div>
 </div>
 
@@ -488,8 +489,6 @@
       <button class="info-btn" onclick="togglePredictHistory(event)" aria-label="Show match-by-match history">▾</button>
     </div>
     <div class="predict-history" id="predictionsHistory"></div>
-    <div class="section-title">🗣️ Banter</div>
-    <div class="banter-wrap" id="banterFeed"></div>
     <div class="section-title">⚽ Predict Upcoming Matches</div>
     <div id="predictionsEntry"></div>
   </div>
@@ -497,6 +496,10 @@
 
 <div class="container tab-content" id="prizesTab">
   <div id="prizesApp"></div>
+</div>
+
+<div class="container tab-content" id="banterTab">
+  <div class="banter-wrap" id="banterFeed"></div>
 </div>
 
 <div class="tab-content" id="gamesTab">
@@ -1054,32 +1057,48 @@ function renderPodium(ranked, knockoutStarted, projectedTotals, gamesRemainingMa
     }).join('') + '</div>';
 }
 
-function renderSideBets(groupRanked) {
-  const mealOwner = groupRanked[0];
-  const cookOwner = groupRanked[groupRanked.length - 1];
-  return '<div class="side-bets">' +
-    '<div class="side-bet">🍽️ <strong>Home Cooked Meal</strong> — ' + mealOwner.name + ' (group stage winner)</div>' +
-    '<div class="side-bet">👨‍🍳 <strong>' + cookOwner.name + '</strong> must cook for ' + mealOwner.name + ' (group stage last place)</div>' +
+function prizeCard(emoji, label, name, cfg) {
+  return '<div class="prize-card' + (cfg ? ' ' + cfg.border : '') + '">' +
+    '<div class="prize-emoji">' + emoji + '</div>' +
+    '<div class="prize-place' + (cfg ? ' ' + cfg.c : '') + '">' + label + '</div>' +
+    '<div class="prize-name">' + name + '</div>' +
     '</div>';
 }
 
-function renderKnockoutPrizes(knockoutRanked, knockoutStarted) {
-  const caption = knockoutStarted ? '' :
-    '<div class="podium-caption">Allocated once the knockout stage gets underway</div>';
+function renderPrizes(groupRanked, knockoutRanked, knockoutStarted, predictionsRanked) {
+  const winner = groupRanked[0];
+  const loser  = groupRanked[groupRanked.length - 1];
 
-  const cards = '<div class="section-title">Prizes — Knockout Stage</div>' + caption + '<div class="prizes">' +
+  const groupSection =
+    '<div class="section-title">Group Stage Prizes</div>' +
+    '<div class="prizes">' +
+      prizeCard('🍽️', '🥇 1st — ' + winner.name, 'Home Cooked Meal', PLAYER_CFG[winner.name]) +
+      prizeCard('👨‍🍳', '🥉 Last — ' + loser.name, 'Must Cook the Meal', PLAYER_CFG[loser.name]) +
+    '</div>';
+
+  const koCaption = knockoutStarted ? '' :
+    '<div class="podium-caption">Allocated once the knockout stage gets underway</div>';
+  const koSection =
+    '<div class="section-title">Knockout Stage Prizes</div>' + koCaption +
+    '<div class="prizes">' +
     PRIZES.map((prz, i) => {
       const p = knockoutStarted ? knockoutRanked[i] : null;
-      const cfg = p ? PLAYER_CFG[p.name] : null;
-      return '<div class="prize-card' + (cfg ? ' ' + cfg.border : '') + '">' +
-        '<div class="prize-emoji">' + prz.emoji + '</div>' +
-        '<div class="prize-place' + (cfg ? ' ' + cfg.c : '') + '">' + RANK_LABELS[i] + ' — ' + (p ? p.name : 'TBD') + '</div>' +
-        '<div class="prize-name">' + prz.name + '</div>' +
-        '</div>';
-    }).join('') + '</div>';
+      return prizeCard(prz.emoji, RANK_LABELS[i] + ' — ' + (p ? p.name : 'TBD'), prz.name, p ? PLAYER_CFG[p.name] : null);
+    }).join('') +
+    '</div>';
 
-  return cards;
+  const predLeader = predictionsRanked ? predictionsRanked[0] : null;
+  const predSection =
+    '<div class="section-title">Predictions Winner</div>' +
+    '<div class="prizes">' +
+      prizeCard('🔮', predLeader ? '🥇 1st — ' + predLeader.name : '🥇 1st — TBD', 'Prize TBC', predLeader ? PLAYER_CFG[predLeader.name] : null) +
+    '</div>';
+
+  return groupSection + koSection + predSection;
 }
+
+function renderSideBets() { return ''; }
+function renderKnockoutPrizes() { return ''; }
 
 // ── Weather (Open-Meteo, free, no API key) ──────────────────────────
 const weatherGeoCache = {};
@@ -1559,17 +1578,15 @@ async function render() {
     knockoutTrackerHtml +
     unmatchedHtml;
 
-  const prizesApp = document.getElementById('prizesApp');
-  if (prizesApp) {
-    prizesApp.innerHTML =
-      renderKnockoutPrizes(knockoutRanked, knockoutStarted) +
-      renderSideBets(ranked);
-  }
-
   // ── Predictions / kickoff countdown support ─────────────────────────
   latestUpcoming = [...todayEvents, ...upcomingEvents].filter(e => !e.status?.type?.completed);
   latestCompleted = [...todayEvents.filter(e => e.status?.type?.completed), ...completedEvents]
     .sort((a, b) => new Date(b.date) - new Date(a.date));
+
+  const prizesApp = document.getElementById('prizesApp');
+  if (prizesApp) {
+    prizesApp.innerHTML = renderPrizes(ranked, knockoutRanked, knockoutStarted, getPredictionsRanked());
+  }
   renderKickoffBanner(findNextSweepstakeMatch([...todayEvents, ...upcomingEvents]));
   renderPredictionsLeaderboard();
   if (document.getElementById('tabPredictions')?.classList.contains('active')) {
@@ -1706,12 +1723,16 @@ initFootballToy();
 
 // ── Tabs ─────────────────────────────────────────────────────────────
 function switchTab(name) {
-  ['standings','predictions','prizes','games'].forEach(t => {
+  ['standings','predictions','prizes','banter','games'].forEach(t => {
     document.getElementById('tab' + t.charAt(0).toUpperCase() + t.slice(1))?.classList.toggle('active', name === t);
     document.getElementById(t + 'Tab')?.classList.toggle('active', name === t);
   });
   if (name === 'games') initKeepyUppy();
   if (name === 'predictions') { renderPredictPicker(); renderPredictionsEntry(); }
+  if (name === 'banter') {
+    const feed = document.querySelector('#banterFeed .banter-feed');
+    if (feed) feed.scrollTop = feed.scrollHeight;
+  }
 }
 
 function switchGame(el, id) {
@@ -2762,17 +2783,10 @@ function scorePrediction(pred, actualHome, actualAway, actualPenWinner) {
   return pts;
 }
 
-function renderPredictionsLeaderboard() {
-  const el = document.getElementById('predictionsLeaderboard');
-  if (!el) return;
-  if (!firebaseReady) {
-    el.innerHTML = '<div class="predict-config-msg">Predictions backend not configured yet — see setup instructions to enable shared predictions.</div>';
-    return;
-  }
-
+function getPredictionsRanked() {
+  if (!firebaseReady) return null;
   const totals = { Joel: 0, Josh: 0, Eleanor: 0 };
   const counts = { Joel: 0, Josh: 0, Eleanor: 0 };
-
   for (const event of latestCompleted) {
     const competitors = event.competitions?.[0]?.competitors || [];
     const home = competitors.find(c => c.homeAway === 'home') || competitors[0];
@@ -2790,10 +2804,20 @@ function renderPredictionsLeaderboard() {
       counts[player]++;
     }
   }
-
-  const ranked = Object.keys(PLAYER_CFG)
+  return Object.keys(PLAYER_CFG)
     .map(name => ({ name, pts: totals[name], count: counts[name] }))
     .sort((a, b) => b.pts - a.pts);
+}
+
+function renderPredictionsLeaderboard() {
+  const el = document.getElementById('predictionsLeaderboard');
+  if (!el) return;
+  if (!firebaseReady) {
+    el.innerHTML = '<div class="predict-config-msg">Predictions backend not configured yet — see setup instructions to enable shared predictions.</div>';
+    return;
+  }
+
+  const ranked = getPredictionsRanked();
   const medals = ['🥇', '🥈', '🥉'];
 
   el.innerHTML = '<div class="predict-leaderboard">' + ranked.map((p, i) => {
@@ -2948,8 +2972,7 @@ function renderBanter() {
   }
 
   const existingFeed = el.querySelector('.banter-feed');
-  const wasNearBottom = !existingFeed ||
-    (existingFeed.scrollHeight - existingFeed.scrollTop - existingFeed.clientHeight < 40);
+  const wasNearBottom = true;
   const existingInput = document.getElementById('banterInput');
   const inputVal = existingInput ? existingInput.value : '';
   const hadFocus = existingInput && document.activeElement === existingInput;
