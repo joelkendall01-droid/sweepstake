@@ -1502,8 +1502,8 @@ async function render() {
     upcomingEvents = allEvents
       .filter(e => !e.status?.type?.completed && e.date.slice(0, 10) > todayStr && !todayIds.has(e.id))
       .sort((a, b) => new Date(a.date) - new Date(b.date));
-    // Build map of team → remaining opponents for fixture-aware projection
-    allEvents.filter(e => !e.status?.type?.completed).forEach(e => {
+    // Build map of team → remaining GROUP STAGE opponents (exclude knockout fixtures)
+    allEvents.filter(e => !e.status?.type?.completed && e.date.slice(0, 10) < '2026-06-28').forEach(e => {
       const comps = e.competitions?.[0]?.competitors || [];
       const homeN = comps.find(c => c.homeAway === 'home')?.team?.displayName;
       const awayN = comps.find(c => c.homeAway === 'away')?.team?.displayName;
