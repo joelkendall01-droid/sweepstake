@@ -762,7 +762,7 @@ const RANK_LABELS = ['🥇 1st', '🥈 2nd', '🥉 3rd'];
 // ── Knockout round definitions (fixed 2026 World Cup schedule) ────────
 // depth = "how far a team has reached" once they appear in / win a match in that round.
 const ROUNDS = [
-  { key: 'r32',   label: 'Round of 32',       start: '2026-06-29T00:00Z', end: '2026-07-04T12:00Z', depth: 1 },
+  { key: 'r32',   label: 'Round of 32',       start: '2026-06-28T12:00Z', end: '2026-07-04T12:00Z', depth: 1 },
   { key: 'r16',   label: 'Round of 16',       start: '2026-07-04T12:00Z', end: '2026-07-08T12:00Z', depth: 2 },
   { key: 'qf',    label: 'Quarter-Finals',    start: '2026-07-08T12:00Z', end: '2026-07-13T00:00Z', depth: 3 },
   { key: 'sf',    label: 'Semi-Finals',       start: '2026-07-13T00:00Z', end: '2026-07-17T00:00Z', depth: 4 },
@@ -914,7 +914,7 @@ function formatFractionalOdds(american) {
   return (num / g) + '/' + (den / g);
 }
 
-const KNOCKOUT_DATES = '20260629-20260719';
+const KNOCKOUT_DATES = '20260628-20260719';
 const ALL_DATES = '20260611-20260719';
 
 // ── Parse ────────────────────────────────────────────────────────────
@@ -1486,7 +1486,7 @@ async function render() {
 
   const knockoutStarted = new Date() >= new Date('2026-06-29T00:00Z');
   const knockoutRanked = Object.keys(totals)
-    .sort((a, b) => compareOwners(a, b, teams, teamDepth, totals, gds))
+    .sort((a, b) => compareOwners(a, b, teams, knockoutStarted ? teamDepth : {}, totals, gds))
     .map((name, i) => ({ name, pts: totals[name], rank: i + 1 }));
 
   const todayEvents = liveResult.status === 'fulfilled' ? (liveResult.value.events || []) : [];
@@ -2793,7 +2793,7 @@ function getPredictionsRanked() {
     const away = competitors.find(c => c.homeAway === 'away') || competitors[1];
     if (!home || !away || home.score == null || away.score == null) continue;
     const actualHome = Number(home.score), actualAway = Number(away.score);
-    const isKnockout = (event.date || '').slice(0, 10) >= '2026-06-29';
+    const isKnockout = (event.date || '').slice(0, 10) >= '2026-06-28';
     const actualPenWinner = (isKnockout && actualHome === actualAway)
       ? (home.winner ? 'home' : away.winner ? 'away' : null) : null;
     const preds = predictionsData[event.id] || {};
@@ -2850,7 +2850,7 @@ function renderPredictionsHistory() {
     if (!pickers.length) continue;
 
     const actualHome = Number(home.score), actualAway = Number(away.score);
-    const isKnockout = (event.date || '').slice(0, 10) >= '2026-06-29';
+    const isKnockout = (event.date || '').slice(0, 10) >= '2026-06-28';
     const actualPenWinner = (isKnockout && actualHome === actualAway)
       ? (home.winner ? 'home' : away.winner ? 'away' : null) : null;
     const picksHtml = pickers.map(player => {
@@ -2900,7 +2900,7 @@ function renderPredictionsEntry() {
         '<span>' + c.team.displayName + '</span>';
     };
 
-    const isKnockout = (event.date || '').slice(0, 10) >= '2026-06-29';
+    const isKnockout = (event.date || '').slice(0, 10) >= '2026-06-28';
     let body;
     if (status.state !== 'pre') {
       const picks = Object.keys(PLAYER_CFG)
