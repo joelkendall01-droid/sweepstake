@@ -140,6 +140,8 @@
     .knockout-round { margin-bottom: 16px; }
     .knockout-round-title { font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: .5px; color: var(--muted); margin-bottom: 8px; }
     .knockout-match { background: var(--card-bg); border-radius: 10px; padding: 10px 14px; margin-bottom: 6px; font-size: 13px; box-shadow: 0 1px 4px var(--card-shadow-sm); display: flex; align-items: center; flex-wrap: wrap; gap: 6px; }
+    .rank-badge { display: inline-flex; align-items: center; font-size: 9px; font-weight: 800; background: rgba(180,30,20,.1); color: #b01a0e; border: 1px solid rgba(180,30,20,.2); border-radius: 3px; padding: 0 3px; height: 14px; vertical-align: middle; flex-shrink: 0; margin-left: 2px; }
+    [data-theme="dark"] .rank-badge { background: rgba(255,110,90,.15); color: #ff7a65; border-color: rgba(255,110,90,.22); }
     .knockout-match .tbd { color: var(--muted); font-style: italic; }
     .knockout-score { font-weight: 800; }
     .knockout-status { margin-left: auto; font-size: 11px; color: var(--muted); }
@@ -1034,7 +1036,10 @@ function parseKnockout(data) {
     const competitors = (comp?.competitors || []).map(c => {
       const name = c.team.displayName;
       const isReal = !!c.team.isActive;
-      return { name, isReal, owner: isReal ? findOwner(name) : null, score: c.score, winner: !!c.winner };
+      // ESPN sometimes returns curatedRank.current; fall back to our FIFA_RANK table
+      const espnRank = c.curatedRank?.current;
+      const rank = (espnRank && espnRank < 999) ? espnRank : getRank(name);
+      return { name, isReal, owner: isReal ? findOwner(name) : null, score: c.score, winner: !!c.winner, rank };
     });
 
     for (const c of competitors) {
@@ -1327,7 +1332,11 @@ function toggleUpcoming(btn) {
 }
 
 function knockoutTeamLabel(c) {
-  if (c.isReal) return ownerBadge(c.owner) + ' <strong>' + withRank(c.name) + '</strong>';
+  if (c.isReal) {
+    const rank = c.rank ?? getRank(c.name);
+    const chip = rank ? '<span class="rank-badge">#' + rank + '</span>' : '';
+    return ownerBadge(c.owner) + ' <strong>' + c.name + chip + '</strong>';
+  }
   return '<span class="tbd">' + c.name + '</span>';
 }
 
@@ -1462,7 +1471,7 @@ function renderKnockoutBreakdown(ranked, teams, matchesByRound) {
             const st = koStatus[t.name];
             return '<div class="team-row' + (st.eliminated ? ' ko-eliminated' : '') + '">' +
               (t.flag ? '<img class="team-flag" src="' + t.flag + '" alt="" onerror="this.style.display=\'none\'">' : '') +
-              '<span class="team-name">' + t.name + '</span>' +
+              '<span class="team-name">' + t.name + (getRank(t.name) ? '<span class="rank-badge">#' + getRank(t.name) + '</span>' : '') + '</span>' +
               '<span class="ko-round-badge">' + st.short + '</span>' +
               '<span class="team-pts ' + (st.eliminated ? '' : cfg.c) + '">' + (st.eliminated ? '❌' : '✓') + '</span>' +
             '</div>';
@@ -2987,8 +2996,10 @@ function renderPredictionsEntry() {
 
     const teamHtml = (c) => {
       const flag = c.team.logos?.[0]?.href || '';
+      const rank = getRank(c.team.displayName);
+      const chip = rank ? '<span class="rank-badge">#' + rank + '</span>' : '';
       return (flag ? '<img class="team-flag" src="' + flag + '" alt="" onerror="this.style.display=\'none\'">' : '') +
-        '<span>' + c.team.displayName + '</span>';
+        '<span>' + c.team.displayName + chip + '</span>';
     };
 
     const isKnockout = (event.date || '').slice(0, 10) >= '2026-06-28';
