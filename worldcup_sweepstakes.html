@@ -937,45 +937,46 @@ function formatFractionalOdds(american) {
 const KNOCKOUT_DATES = '20260628-20260719';
 
 // Bracket slot positions — consecutive pairs (1&2, 3&4 …) feed the same next-round match.
-// R32 ordered to match the official FIFA 2026 draw (left-to-right, top-to-bottom).
-// R16/QF/SF ordered so each pair feeds the correct SF half.
+// Verified against live ESPN event data (event IDs confirmed by API).
 const BRACKET_POS = {
-  // R32 (positions 1–16) — left half feeds SF1, right half feeds SF2
-  760489: 1,  // Germany vs Paraguay      (M74) → M89
-  760492: 2,  // France vs Sweden         (M77) → M89
-  760486: 3,  // South Africa vs Canada   (M73) → M90
-  760488: 4,  // Netherlands vs Morocco   (M75) → M90
-  760496: 5,  // Portugal vs Croatia      (M83) → M93
-  760497: 6,  // Spain vs Austria         (M84) → M93
-  760494: 7,  // USA vs Bosnia-Herz.      (M81) → M94
-  760493: 8,  // Belgium vs Senegal       (M82) → M94
-  760487: 9,  // Brazil vs Japan          (M76) → M91
-  760490: 10, // Ivory Coast vs Norway    (M78) → M91
-  760491: 11, // Mexico vs Ecuador        (M79) → M92
-  760495: 12, // England vs DR Congo      (M80) → M92
-  760500: 13, // Argentina vs Cape Verde  (M86) → M95
-  760499: 14, // Australia vs Egypt       (M88) → M95
-  760498: 15, // Switzerland vs Algeria   (M85) → M96
-  760501: 16, // Colombia vs Ghana        (M87) → M96
-  // R16 (positions 17–24) — SF1 path first, then SF2 path
-  760502: 17, // M89: W74 vs W77  (GER/FRA)  → QF1
-  760503: 18, // M90: W73 vs W75  (SA/NED)   → QF1
-  760506: 19, // M93: W83 vs W84  (POR/ESP)  → QF2
-  760507: 20, // M94: W81 vs W82  (USA/BEL)  → QF2
-  760504: 21, // M91: W76 vs W78  (BRA/CIV)  → QF3
-  760505: 22, // M92: W79 vs W80  (MEX/ENG)  → QF3
-  760509: 23, // M95: W86 vs W88  (ARG/AUS)  → QF4
-  760508: 24, // M96: W85 vs W87  (SWI/COL)  → QF4
-  // QF (positions 25–28) — (QF1,QF2)→SF1, (QF3,QF4)→SF2
-  760510: 25, // QF1: M89W vs M90W
-  760512: 26, // QF2: M93W vs M94W
-  760511: 27, // QF3: M91W vs M92W
-  760513: 28, // QF4: M95W vs M96W
+  // R32 — top half of bracket (feeds SF1): pairs 0-3
+  760489: 1,  // Germany vs Paraguay    (M74) → R16 #760503
+  760492: 2,  // France vs Sweden       (M77) → R16 #760503
+  760486: 3,  // South Africa vs Canada (M73) → R16 #760502
+  760488: 4,  // Netherlands vs Morocco (M75) → R16 #760502
+  760487: 5,  // Brazil vs Japan        (M76) → R16 #760504
+  760490: 6,  // Ivory Coast vs Norway  (M78) → R16 #760504
+  760491: 7,  // Mexico vs Ecuador      (M79) → R16 #760505
+  760495: 8,  // England vs DR Congo    (M80) → R16 #760505
+  // R32 — bottom half of bracket (feeds SF2): pairs 4-7
+  760496: 9,  // Portugal vs Croatia    (M83) → R16 #760506
+  760497: 10, // Spain vs Austria       (M84) → R16 #760506
+  760494: 11, // USA vs Bosnia-Herz.    (M81) → R16 #760507
+  760493: 12, // Belgium vs Senegal     (M82) → R16 #760507
+  760500: 13, // Argentina vs Cape Verde(M86) → R16 #760509
+  760499: 14, // Australia vs Egypt     (M88) → R16 #760509
+  760498: 15, // Switzerland vs Algeria (M85) → R16 #760508
+  760501: 16, // Colombia vs Ghana      (M87) → R16 #760508
+  // R16 — top half (→ SF1 via QF1+QF2): positions 17-20
+  760503: 17, // M74W vs M77W = GER/PAR+FRA/SWE → QF1 (#760510)
+  760502: 18, // M73W vs M75W = SA/CAN+NED/MOR  → QF1 (#760510)
+  760504: 19, // M76W vs M78W = BRA/JPN+CIV/NOR → QF2 (#760512)
+  760505: 20, // M79W vs M80W = MEX/ECU+ENG/COD → QF2 (#760512)
+  // R16 — bottom half (→ SF2 via QF3+QF4): positions 21-24
+  760506: 21, // M83W vs M84W = POR/CRO+ESP/AUT → QF3 (#760511)
+  760507: 22, // M81W vs M82W = USA/BIH+BEL/SEN → QF3 (#760511)
+  760509: 23, // M86W vs M88W = ARG/CPV+AUS/EGY → QF4 (#760513)
+  760508: 24, // M85W vs M87W = SWI/ALG+COL/GHA → QF4 (#760513)
+  // QF — top pair (→ SF1), bottom pair (→ SF2)
+  760510: 25, // QF1: R16#1+#2 winners → SF1
+  760512: 26, // QF2: R16#3+#4 winners → SF1
+  760511: 27, // QF3: R16#5+#6 winners → SF2
+  760513: 28, // QF4: R16#7+#8 winners → SF2
   // SF
   760514: 29, // SF1: QF1W vs QF2W
   760515: 30, // SF2: QF3W vs QF4W
   // Final & 3rd Place
-  760517: 31, // Final
+  760517: 31,
   760516: 1,  // 3rd Place (rendered separately)
 };
 const ALL_DATES = '20260611-20260719';
@@ -1089,7 +1090,9 @@ function ownerBadge(owner) {
 function formatMatchStatus(event) {
   const t = event.status?.type || {};
   if (t.state === 'in')   return { state: 'in',   text: t.shortDetail || 'LIVE' };
-  if (t.state === 'post') return { state: 'post', text: 'FT' };
+  if (t.state === 'post') {
+    return { state: 'post', text: t.shortDetail || t.detail || 'FT' };
+  }
   return { state: 'pre', text: new Date(event.date).toLocaleString([], { weekday: 'short', hour: '2-digit', minute: '2-digit' }) };
 }
 
@@ -1241,7 +1244,11 @@ function renderMatchCard(event, odds) {
   const home = competitors.find(c => c.homeAway === 'home') || competitors[0];
   const away = competitors.find(c => c.homeAway === 'away') || competitors[1];
   const status = formatMatchStatus(event);
-  const score = status.state === 'pre' ? 'vs' : (home.score ?? '0') + ' - ' + (away.score ?? '0');
+  let score = status.state === 'pre' ? 'vs' : (home.score ?? '0') + ' - ' + (away.score ?? '0');
+  // Add penalty shootout result on its own line if applicable
+  if (status.text.includes('Pens') && home.shootoutScore !== undefined && away.shootoutScore !== undefined) {
+    score += '<div style="font-size:0.7em; opacity:0.85; font-weight:700; margin-top:2px;">(' + home.shootoutScore + '-' + away.shootoutScore + ')</div>';
+  }
 
   const teamHtml = (c) => {
     const name = c.team.displayName;
@@ -1348,7 +1355,11 @@ function renderKnockoutTrackerList(roundsWithMatches, matchesByRound) {
       matches.map(m => {
         const [a, b] = m.competitors;
         const status = formatMatchStatus(m);
-        const score = status.state === 'pre' ? '' : '<span class="knockout-score">' + (a.score ?? '0') + ' - ' + (b.score ?? '0') + '</span>';
+        let score = status.state === 'pre' ? '' : '<span class="knockout-score">' + (a.score ?? '0') + ' - ' + (b.score ?? '0') + '</span>';
+        // Add penalty shootout result to score display
+        if (status.text.includes('Pens') && a.shootoutScore !== undefined && b.shootoutScore !== undefined) {
+          score += ' <span style="font-size:0.9em; opacity:0.85;">(' + a.shootoutScore + '-' + b.shootoutScore + ')</span>';
+        }
         return '<div class="knockout-match">' +
           knockoutTeamLabel(a) + ' <span style="color:#bbb">vs</span> ' + knockoutTeamLabel(b) + ' ' + score +
           '<span class="knockout-status">' + status.text + '</span>' +
@@ -1374,10 +1385,15 @@ function renderKnockoutBracket(roundsWithMatches, matchesByRound) {
     const status = formatMatchStatus(m);
     const showScore = m.id && status.state !== 'pre';
     const teamRow = c => '<div class="bracket-team">' + knockoutTeamLabel(c) + (showScore ? '<span class="bracket-score">' + (c.score ?? '0') + '</span>' : '') + '</div>';
+    let statusText = m.id && m.date ? status.text : '';
+    // Add penalty shootout result to status line
+    if (statusText.includes('Pens') && a.shootoutScore !== undefined && b.shootoutScore !== undefined) {
+      statusText += ' (' + a.shootoutScore + '-' + b.shootoutScore + ')';
+    }
     return '<div class="bracket-match">' +
       teamRow(a) +
       (b && b.name ? teamRow(b) : '') +
-      '<div class="bracket-status">' + (m.id && m.date ? status.text : '') + '</div>' +
+      '<div class="bracket-status">' + statusText + '</div>' +
     '</div>';
   };
 
@@ -1588,18 +1604,26 @@ async function render() {
     .sort((a, b) => compareOwners(a, b, teams, knockoutStarted ? teamDepth : {}, totals, gds))
     .map((name, i) => ({ name, pts: totals[name], rank: i + 1 }));
 
-  const todayEvents = liveResult.status === 'fulfilled' ? (liveResult.value.events || []) : [];
+  const todayStr = new Date().toISOString().slice(0, 10);
+  let todayEvents = liveResult.status === 'fulfilled' ? (liveResult.value.events || []) : [];
+  // Filter to only today's matches (exclude yesterday's completed matches from liveResult)
+  todayEvents = todayEvents.filter(e => e.date.slice(0, 10) === todayStr);
 
   let upcomingEvents = [], completedEvents = [], remainingOpponents = {};
-  const todayIds = new Set(todayEvents.map(e => e.id));
   if (allResult.status === 'fulfilled') {
     const allEvents = allResult.value.events || [];
-    const todayStr = new Date().toISOString().slice(0, 10);
+    // Merge today's not-yet-started matches that the live endpoint missed
+    const todayIds = new Set(todayEvents.map(e => e.id));
+    const todayExtra = allEvents.filter(e =>
+      !e.status?.type?.completed && e.date.slice(0, 10) === todayStr && !todayIds.has(e.id)
+    );
+    todayEvents.push(...todayExtra);
+    const allTodayIds = new Set(todayEvents.map(e => e.id));
     completedEvents = allEvents
-      .filter(e => e.status?.type?.completed && !todayIds.has(e.id))
+      .filter(e => e.status?.type?.completed && !allTodayIds.has(e.id))
       .sort((a, b) => new Date(b.date) - new Date(a.date));
     upcomingEvents = allEvents
-      .filter(e => !e.status?.type?.completed && e.date.slice(0, 10) > todayStr && !todayIds.has(e.id))
+      .filter(e => !e.status?.type?.completed && e.date.slice(0, 10) > todayStr && !allTodayIds.has(e.id))
       .sort((a, b) => new Date(a.date) - new Date(b.date));
     // Build map of team → remaining GROUP STAGE opponents (exclude knockout fixtures)
     allEvents.filter(e => !e.status?.type?.completed && e.date.slice(0, 10) < '2026-06-28').forEach(e => {
@@ -1684,7 +1708,7 @@ async function render() {
   const prizesApp = document.getElementById('prizesApp');
   if (prizesApp) {
     prizesApp.innerHTML =
-      renderPodium(knockoutRanked, knockoutStarted, projectedTotals, gamesRemainingMap) +
+      renderPodium(ranked, knockoutStarted, projectedTotals, gamesRemainingMap) +
       renderPrizes(ranked, knockoutRanked, knockoutStarted, getPredictionsRanked());
   }
   renderKickoffBanner(findNextSweepstakeMatch([...todayEvents, ...upcomingEvents]));
